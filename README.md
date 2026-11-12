@@ -66,6 +66,25 @@ npm run dev      # http://localhost:3000
 npm run build && npm start
 ```
 
+## Demo data
+
+`scripts/seed-demo.mjs` fills the database with realistic demo data for a Dhaka grocery store: a category tree with subcategories (the 18 original products move into subcategories), 40 more products, 4 extra coupons, 12 demo customers with profiles, ~85 orders over the last 60 days, ~120 reviews (the rating trigger updates the products), and a few contact messages and newsletter subscribers. It also deletes the end-to-end test order `FB-134453` after putting its stock back.
+
+```bash
+npm run db:seed-demo -- --dry-run   # checks every image URL and shows what would be written, writes nothing
+npm run db:seed-demo                # seed (safe to re-run; existing demo rows are not duplicated)
+npm run db:seed-demo -- --reset     # remove only the demo rows
+```
+
+The script recognises demo rows like this (the same rules drive re-runs and `--reset`):
+
+- **Users:** `app_metadata.demo = true` and an e-mail ending in `@demo.freshbasket.test`. Their passwords are random and never printed, so use the admin panel or a password reset if you need to sign in as one.
+- **Orders:** the phone number starts with `017000` (a reserved demo range), and the e-mail is either empty or `@demo.freshbasket.test`.
+- **Products, categories and coupons:** the fixed ids listed in the script.
+- **Reviews, messages and subscribers:** written by demo users, or using demo e-mails.
+
+`--reset` puts the original products back in their top-level categories and restores their ratings. It never touches the 4 legacy sample orders or real accounts.
+
 ## Catalog revalidation (for the admin panel)
 
 Catalog pages are cached (tag `catalog`). After editing products, categories or coupons, the admin panel should call:
