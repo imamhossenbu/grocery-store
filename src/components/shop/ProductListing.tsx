@@ -71,9 +71,9 @@ export async function ProductListing({ basePath, filters: raw, lockedCategory, s
 
   return (
     <ListingProvider>
-      <div className="lg:grid lg:grid-cols-[250px_minmax(0,1fr)] lg:gap-10">
+      <div className="lg:grid lg:grid-cols-[280px_minmax(0,1fr)] lg:gap-8">
         <aside className="hidden lg:block" aria-label="Filters">
-          <div className="sticky top-44 max-h-[calc(100vh-12rem)] overflow-y-auto rounded-[1.75rem] border border-[#dfece3] bg-white p-5 shadow-soft">
+          <div className="fb-scroll sticky top-44 max-h-[calc(100vh-12rem)] overflow-y-auto overscroll-contain rounded-2xl border border-[#dfece3] bg-white p-4 shadow-soft [scrollbar-gutter:stable]">
             <FilterPanel {...panel} idPrefix="d" />
           </div>
         </aside>

@@ -28,7 +28,7 @@ interface Props {
   idPrefix: string;
 }
 
-const heading = 'text-xs font-extrabold uppercase tracking-widest text-[#5a7165]';
+const heading = 'text-[15px] font-bold text-[#112a1d]';
 
 /**
  * Filters as a plain GET form: works without JavaScript (submit button), and
@@ -113,7 +113,7 @@ export function FilterPanel({ basePath, filters, priceRange, categories, categor
                     } pl-3 ${depth === 0 && !on ? 'font-semibold' : ''}`}
                   >
                     <span className="truncate">{c.name}</span>
-                    <span className="text-xs font-semibold text-[#7e9688]">{c.productCount}</span>
+                    <span className="shrink-0 rounded-full bg-[#f0f7f2] px-2 py-0.5 text-xs font-semibold tabular-nums text-[#3f5649]">{c.productCount}</span>
                   </Link>
                 );
               }}
@@ -124,7 +124,7 @@ export function FilterPanel({ basePath, filters, priceRange, categories, categor
 
       <fieldset>
         <legend className={heading}>Price</legend>
-        <p className="mt-1 text-xs text-[#7e9688]">
+        <p className="mt-1 text-[13px] text-[#3f5649]">
           {formatBDT(priceRange.min)} – {formatBDT(priceRange.max)} in this range
         </p>
         {presets.length > 0 && (
@@ -149,7 +149,7 @@ export function FilterPanel({ basePath, filters, priceRange, categories, categor
         )}
         <div className="mt-3 flex items-end gap-2">
           <label className="flex-1">
-            <span className="text-[11px] font-semibold text-[#5a7165]">Min (৳)</span>
+            <span className="text-[13px] font-medium text-[#3f5649]">Min (৳)</span>
             <input
               type="number"
               name="min"
@@ -160,9 +160,9 @@ export function FilterPanel({ basePath, filters, priceRange, categories, categor
               className="mt-1 h-10 w-full rounded-xl border border-[#cfe3d6] bg-white px-3 text-sm outline-none focus:border-[#1a663b] focus:ring-2 focus:ring-[#1a663b]/20"
             />
           </label>
-          <span className="pb-2.5 text-[#9ab5a5]">–</span>
+          <span className="pb-2.5 text-[#3f5649]">–</span>
           <label className="flex-1">
-            <span className="text-[11px] font-semibold text-[#5a7165]">Max (৳)</span>
+            <span className="text-[13px] font-medium text-[#3f5649]">Max (৳)</span>
             <input
               type="number"
               name="max"
@@ -257,27 +257,29 @@ function CategoryTree({
     });
 
   const level = (list: FilterCategory[], depth: number): React.ReactNode => (
-    <ul className={depth ? 'ml-4 mt-0.5 space-y-0.5 border-l-2 border-[#e3efe7] pl-2' : 'space-y-0.5'}>
+    <ul className={depth ? 'mt-0.5 space-y-0.5 pl-5' : 'space-y-0.5'}>
       {list.map((c) => {
         const hasKids = (c.children?.length ?? 0) > 0;
         const expanded = hasKids && open.has(c.id);
         const listId = `${idPrefix}-${c.id}`;
         return (
           <li key={c.id}>
-            <div className="flex items-center gap-1">
-              {render(c, depth)}
-              {hasKids && (
+            <div className="flex items-center gap-0.5">
+              {hasKids ? (
                 <button
                   type="button"
                   onClick={() => toggle(c.id)}
                   aria-expanded={expanded}
                   aria-controls={listId}
                   aria-label={`${expanded ? 'Collapse' : 'Expand'} ${c.name}`}
-                  className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[#5a7165] transition hover:bg-[#f0f7f2] hover:text-[#1a663b] focus-visible:outline-2 focus-visible:outline-[#1a663b] cursor-pointer"
+                  className="grid h-8 w-6 shrink-0 place-items-center rounded-lg text-[#3f5649] transition hover:bg-[#f0f7f2] hover:text-[#1a663b] focus-visible:outline-2 focus-visible:outline-[#1a663b] cursor-pointer"
                 >
-                  <ChevronRight className={`h-4 w-4 transition-transform ${expanded ? 'rotate-90' : ''}`} aria-hidden />
+                  <ChevronRight className={`h-4 w-4 transition-transform duration-200 ${expanded ? 'rotate-90' : ''}`} aria-hidden />
                 </button>
+              ) : (
+                <span aria-hidden className="w-6 shrink-0" />
               )}
+              {render(c, depth)}
             </div>
             {hasKids && (
               <div id={listId} hidden={!expanded}>
@@ -311,7 +313,7 @@ function CategoryOption({
 }) {
   return (
     <label
-      className={`flex min-w-0 flex-1 cursor-pointer items-center justify-between gap-2 rounded-xl px-3 py-2 text-sm transition has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[#1a663b] ${
+      className={`flex min-w-0 flex-1 cursor-pointer items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-sm transition has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[#1a663b] ${
         checked ? 'bg-[#e8f5ee] font-bold text-[#14522f]' : 'text-[#234835] hover:bg-[#f0f7f2]'
       } ${depth === 0 && id && !checked ? 'font-semibold' : ''}`}
     >
@@ -325,7 +327,7 @@ function CategoryOption({
         </span>
         <span className="truncate">{name}</span>
       </span>
-      <span className="text-xs font-semibold text-[#7e9688]">{count}</span>
+      <span className="shrink-0 rounded-full bg-[#f0f7f2] px-2 py-0.5 text-xs font-semibold tabular-nums text-[#3f5649]">{count}</span>
     </label>
   );
 }
