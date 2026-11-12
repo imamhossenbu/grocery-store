@@ -47,7 +47,10 @@ export interface TrackResult {
   total: number;
   paymentMethod: PaymentMethod;
   paymentStatus: PaymentStatus;
+  /** "Union, Upazila, District" (older orders: "Area, City"). */
   area: string;
+  /** Full one-line delivery address. */
+  address: string;
   deliverySlot: string;
   accessToken: string;
 }

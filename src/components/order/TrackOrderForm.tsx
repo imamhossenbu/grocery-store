@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { AlertCircle, ArrowRight, Loader2, PackageSearch } from 'lucide-react';
+import { AlertCircle, ArrowRight, Loader2, MapPin, PackageSearch } from 'lucide-react';
 import { trackOrder } from '@/actions/orders';
 import { formatBDT, formatDateTime } from '@/lib/format';
 import { OrderProgress } from './OrderProgress';
@@ -108,6 +108,14 @@ export function TrackOrderForm({ initialId = '' }: { initialId?: string }) {
               <Fact label={found.paymentMethod === 'cod' ? 'Total (COD)' : 'Total (online)'} value={formatBDT(found.total)} />
               <Fact label="Area" value={found.area} />
               <Fact label="Delivery slot" value={found.deliverySlot} />
+              {found.address && (
+                <div className="col-span-2 rounded-2xl bg-[#f4f9f5] px-3 py-2.5 sm:col-span-4">
+                  <dt className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-[#5a7165]">
+                    <MapPin className="h-3.5 w-3.5" aria-hidden /> Deliver to
+                  </dt>
+                  <dd className="mt-0.5 break-words font-bold text-[#112a1d]">{found.address}</dd>
+                </div>
+              )}
             </dl>
 
             <p className="mt-4 flex flex-wrap items-center gap-2 text-sm font-semibold text-[#445c50]">

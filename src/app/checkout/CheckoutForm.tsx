@@ -26,9 +26,11 @@ import { CartNotices } from '@/components/cart/CartNotices';
 import { FreeDeliveryProgress, TotalsRows } from '@/components/cart/OrderTotals';
 import { useCartSync } from '@/components/cart/useCartSync';
 import { DELIVERY_DAYS, deliveryDateLabel, isSlotAvailable, type DeliveryDay } from '@/components/order/delivery';
-import { LIMITS, validateCheckout, validateField, type CheckoutField, type CheckoutInput, type FieldErrors } from '@/components/order/validation';
+import { CHECKOUT_FIELDS, LIMITS, validateCheckout, validateField, type CheckoutField, type CheckoutInput, type FieldErrors } from '@/components/order/validation';
 import type { PlaceOrderState } from '@/components/order/types';
-import { DELIVERY_SLOTS, DHAKA_AREAS, SUPPORT_PHONE } from '@/lib/constants';
+import { DELIVERY_SLOTS, SUPPORT_PHONE } from '@/lib/constants';
+import { AddressPicker, type AddressErrorField, type AddressErrors } from '@/components/address/AddressPicker';
+import type { AddressValue, GeoIndex, LocalityKind } from '@/lib/address/types';
 import { formatBDT } from '@/lib/format';
 import type { Coupon, Profile } from '@/types/store';
 import { CheckoutSkeleton } from './CheckoutSkeleton';
@@ -44,7 +46,13 @@ const subscribeMinute = (cb: () => void) => {
 const getMinute = () => Math.floor(Date.now() / 60_000) * 60_000;
 const getServerMinute = () => null;
 
-const FIELD_ORDER: CheckoutField[] = ['name', 'phone', 'email', 'address', 'area', 'city', 'notes', 'day', 'slot'];
+const FIELD_ORDER: CheckoutField[] = CHECKOUT_FIELDS;
+const ADDRESS_FIELDS: AddressErrorField[] = ['division', 'district', 'upazila', 'union', 'address', 'landmark', 'postcode'];
+
+/** Focus the control for a field: picker lists expose data-field, inputs a name. */
+function focusField(root: HTMLElement | null, f: string) {
+  root?.querySelector<HTMLElement>(`[data-field="${f}"], [name="${f}"]:not([type="hidden"])`)?.focus();
+}
 
 interface Props {
   live: boolean;
@@ -54,11 +62,13 @@ interface Props {
   coupons: Coupon[];
   /** SSLCommerz credentials are configured on the server. */
   onlinePayment: boolean;
+  /** Divisions + districts for the address picker. */
+  geo: GeoIndex;
 }
 
 type PaymentChoice = 'cod' | 'sslcommerz';
 
-export function CheckoutForm({ live, signedIn, email, profile, coupons, onlinePayment }: Props) {
+export function CheckoutForm({ live, signedIn, email, profile, coupons, onlinePayment, geo }: Props) {
   const router = useRouter();
   const { hydrated, cart, cartCount, subtotal, discount, deliveryFee, total, coupon, setCoupon, clearCart, toast } = useShop();
   const { checking, notices, dismissNotices } = useCartSync();
@@ -70,8 +80,12 @@ export function CheckoutForm({ live, signedIn, email, profile, coupons, onlinePa
     phone: profile?.phone ?? '',
     email: email ?? '',
     address: profile?.address ?? '',
-    area: (DHAKA_AREAS as readonly string[]).includes(profile?.area ?? '') ? profile!.area : '',
-    city: profile?.city || 'Dhaka',
+    division: '',
+    district: '',
+    upazila: '',
+    union: '',
+    landmark: profile?.landmark ?? '',
+    postcode: profile?.postcode ?? '',
     slot: '',
     day: '',
     notes: '',
@@ -81,6 +95,18 @@ export function CheckoutForm({ live, signedIn, email, profile, coupons, onlinePa
   const [serverErrors, setServerErrors] = useState<FieldErrors>({});
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [payment, setPayment] = useState<PaymentChoice>('cod');
+  // Saved profile address as names; the picker matches them to the dataset.
+  const [addressDefault] = useState(() => ({
+    division: profile?.division,
+    district: profile?.district ?? '',
+    upazila: profile?.upazila ?? profile?.area ?? '',
+    union: profile?.union ?? '',
+    city: profile?.area ? profile.city : undefined,
+    address: profile?.address ?? '',
+    landmark: profile?.landmark ?? '',
+    postcode: profile?.postcode ?? '',
+  }));
+  const [localityKind, setLocalityKind] = useState<LocalityKind | undefined>();
   const submissionId = useRef<string | null>(null);
   const alertRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -112,7 +138,7 @@ export function CheckoutForm({ live, signedIn, email, profile, coupons, onlinePa
       setServerErrors(state.fieldErrors ?? {});
       const firstBad = FIELD_ORDER.find((f) => state.fieldErrors?.[f]);
       if (firstBad) {
-        formRef.current?.querySelector<HTMLElement>(`[name="${firstBad}"]`)?.focus();
+        focusField(formRef.current, firstBad);
       } else {
         alertRef.current?.focus();
       }
@@ -141,24 +167,49 @@ export function CheckoutForm({ live, signedIn, email, profile, coupons, onlinePa
 
   const errorFor = (f: CheckoutField) => serverErrors[f] ?? (touched[f] ? clientErrors[f] : undefined);
 
+  const ctx = { unionOptional: localityKind === 'thana' };
+
   const update = (f: CheckoutField, v: string) => {
     const next = { ...values, [f]: v };
     setValues(next);
-    if (touched[f]) setClientErrors((e) => ({ ...e, [f]: validateField(f, next) }));
+    if (touched[f]) setClientErrors((e) => ({ ...e, [f]: validateField(f, next, ctx) }));
     if (serverErrors[f]) setServerErrors((e) => ({ ...e, [f]: undefined }));
   };
 
   const blur = (f: CheckoutField) => {
     setTouched((t) => ({ ...t, [f]: true }));
-    setClientErrors((e) => ({ ...e, [f]: validateField(f, values) }));
+    setClientErrors((e) => ({ ...e, [f]: validateField(f, values, ctx) }));
   };
+
+  // The picker reports every change; re-check touched fields and clear
+  // server errors for the parts that changed.
+  const onAddressChange = (addr: AddressValue, kind: LocalityKind | undefined) => {
+    setLocalityKind(kind);
+    const next = { ...values, ...addr };
+    const changed = ADDRESS_FIELDS.filter((f) => values[f] !== next[f]);
+    if (!changed.length) return;
+    setValues(next);
+    const c = { unionOptional: kind === 'thana' };
+    setClientErrors((e) => {
+      const out = { ...e };
+      for (const f of ADDRESS_FIELDS) if (touched[f] || e[f]) out[f] = validateField(f, next, c);
+      return out;
+    });
+    setServerErrors((e) => {
+      const out = { ...e };
+      for (const f of changed) out[f] = undefined;
+      return out;
+    });
+  };
+
+  const addressErrors: AddressErrors = Object.fromEntries(ADDRESS_FIELDS.map((f) => [f, errorFor(f)]).filter(([, m]) => m));
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (pending || !live) return;
 
     const effective = { ...values, day, slot };
-    const errs = validateCheckout(effective);
+    const errs = validateCheckout(effective, ctx);
     if (!errs.slot && now !== null && !isSlotAvailable(slot, day, now)) {
       errs.slot = 'That slot is no longer available today. Please pick another slot or tomorrow.';
     }
@@ -167,7 +218,7 @@ export function CheckoutForm({ live, signedIn, email, profile, coupons, onlinePa
     setServerErrors({});
     const firstBad = FIELD_ORDER.find((f) => errs[f]);
     if (firstBad) {
-      e.currentTarget.querySelector<HTMLElement>(`[name="${firstBad}"]`)?.focus();
+      focusField(e.currentTarget, firstBad);
       return;
     }
 
@@ -389,60 +440,26 @@ export function CheckoutForm({ live, signedIn, email, profile, coupons, onlinePa
           </Section>
 
           <Section step={2} title="Delivery address" icon={<MapPin className="h-5 w-5" aria-hidden />}>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <TextField
-                label="Address"
-                name="address"
-                value={values.address}
-                error={errorFor('address')}
-                onChange={(v) => update('address', v)}
-                onBlur={() => blur('address')}
-                autoComplete="street-address"
-                placeholder="House, road, block, flat / floor"
-                maxLength={LIMITS.address}
-                required
-                className="sm:col-span-2"
-              />
-              <SelectField
-                label="Area"
-                name="area"
-                value={values.area}
-                error={errorFor('area')}
-                onChange={(v) => {
-                  update('area', v);
-                  setTouched((t) => ({ ...t, area: true }));
-                  setClientErrors((e) => ({ ...e, area: validateField('area', { ...values, area: v }) }));
-                }}
-                onBlur={() => blur('area')}
-                options={DHAKA_AREAS}
-                placeholder="Select your area"
-                required
-              />
-              <TextField
-                label="City"
-                name="city"
-                value={values.city}
-                error={errorFor('city')}
-                onChange={(v) => update('city', v)}
-                onBlur={() => blur('city')}
-                autoComplete="address-level2"
-                hint="We currently deliver inside Dhaka."
-                maxLength={LIMITS.city}
-                required
-              />
-              <TextAreaField
-                label="Delivery notes"
-                optional
-                name="notes"
-                value={values.notes}
-                error={errorFor('notes')}
-                onChange={(v) => update('notes', v)}
-                onBlur={() => blur('notes')}
-                placeholder="Landmark, gate instructions, preferred call time…"
-                maxLength={LIMITS.notes}
-                className="sm:col-span-2"
-              />
-            </div>
+            <AddressPicker
+              idPrefix="checkout-addr"
+              index={geo}
+              defaultValue={addressDefault}
+              errors={addressErrors}
+              onChange={(addr, meta) => onAddressChange(addr, meta.kind)}
+              onFieldBlur={(f) => blur(f)}
+            />
+            <TextAreaField
+              label="Delivery notes"
+              optional
+              name="notes"
+              value={values.notes}
+              error={errorFor('notes')}
+              onChange={(v) => update('notes', v)}
+              onBlur={() => blur('notes')}
+              placeholder="Gate instructions, preferred call time…"
+              maxLength={LIMITS.notes}
+              className="mt-5"
+            />
           </Section>
 
           <Section step={3} title="Delivery time" icon={<CalendarDays className="h-5 w-5" aria-hidden />}>
@@ -704,31 +721,6 @@ function TextAreaField({ placeholder, maxLength, ...f }: FieldBase & { placehold
         aria-describedby={describedBy(id, f.error, f.hint ?? 'count')}
         className={`${INPUT} ${inputState(f.error)} resize-y`}
       />
-    </FieldShell>
-  );
-}
-
-function SelectField({ options, placeholder, ...f }: FieldBase & { options: readonly string[]; placeholder: string }) {
-  const id = useId();
-  return (
-    <FieldShell id={id} label={f.label} error={f.error} hint={f.hint} optional={f.optional} className={f.className}>
-      <select
-        id={id}
-        name={f.name}
-        value={f.value}
-        onChange={(e) => f.onChange(e.target.value)}
-        onBlur={f.onBlur}
-        required={f.required}
-        aria-required={f.required}
-        aria-invalid={!!f.error}
-        aria-describedby={describedBy(id, f.error, f.hint)}
-        className={`${INPUT} ${inputState(f.error)} appearance-none bg-[url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%235a7165' stroke-width='2' viewBox='0 0 24 24'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")] bg-size-[16px] bg-position-[right_1rem_center] bg-no-repeat pr-10`}
-      >
-        <option value="" disabled>{placeholder}</option>
-        {options.map((o) => (
-          <option key={o} value={o}>{o}</option>
-        ))}
-      </select>
     </FieldShell>
   );
 }

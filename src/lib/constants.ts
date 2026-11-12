@@ -3,6 +3,12 @@ export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3
 export const SUPPORT_PHONE = '+880 1711-000000';
 export const SUPPORT_EMAIL = 'support@freshbasket.com.bd';
 
+/**
+ * Popular Dhaka neighbourhoods, for marketing copy only (e.g. the delivery
+ * info page). Checkout and profiles use the nationwide AddressPicker
+ * (src/components/address) and validate against the bangladesh-geo-data
+ * dataset instead; this list no longer restricts where we deliver.
+ */
 export const DHAKA_AREAS = [
   'Gulshan',
   'Banani',

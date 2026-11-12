@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Check, Copy, Printer } from 'lucide-react';
 
 export function CopyButton({ value, label = 'Copy' }: { value: string; label?: string }) {
@@ -36,4 +36,13 @@ export function PrintButton() {
       <Printer className="h-4 w-4" aria-hidden /> Print invoice
     </button>
   );
+}
+
+/** Opens the print dialog once the invoice has rendered (used by ?print=1 links). */
+export function AutoPrint() {
+  useEffect(() => {
+    const t = window.setTimeout(() => window.print(), 500);
+    return () => window.clearTimeout(t);
+  }, []);
+  return null;
 }

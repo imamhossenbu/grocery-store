@@ -6,20 +6,22 @@ import { getCurrentUser } from '@/lib/supabase/server';
 import { getProfileForUser } from '@/lib/data/orders';
 import { getPublicCoupons, isDatabaseLive } from '@/lib/data/catalog';
 import { isOnlinePaymentEnabled } from '@/lib/payments/sslcommerz';
+import { cachedGeoIndex } from '@/lib/address/geo';
 import { CheckoutForm } from './CheckoutForm';
 import { CheckoutSkeleton } from './CheckoutSkeleton';
 
 export const metadata: Metadata = {
   title: 'Checkout',
-  description: 'Enter your delivery details and place your FreshBasket order — cash on delivery or online payment across Dhaka.',
+  description: 'Enter your delivery details and place your FreshBasket order — cash on delivery or online payment, delivered anywhere in Bangladesh.',
   robots: { index: false, follow: false },
 };
 
 async function CheckoutLoader() {
-  const [user, live, coupons] = await Promise.all([
+  const [user, live, coupons, geo] = await Promise.all([
     getCurrentUser().catch(() => null),
     isDatabaseLive().catch(() => false),
     getPublicCoupons().catch(() => []),
+    cachedGeoIndex(),
   ]);
   const profile = user && live ? await getProfileForUser(user.id).catch(() => null) : null;
 
@@ -31,6 +33,7 @@ async function CheckoutLoader() {
       profile={profile}
       coupons={coupons}
       onlinePayment={isOnlinePaymentEnabled()}
+      geo={geo}
     />
   );
 }

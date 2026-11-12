@@ -2,6 +2,7 @@ import 'server-only';
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { supabaseAdmin, isMissingTableError } from '@/lib/supabase/admin';
 import { normalizePhone } from '@/lib/format';
+import { PROFILE_ADDRESS_COLUMNS, profileAddressFields } from '@/lib/address/profile';
 import { toOrder } from './mappers';
 import type { Order, Profile } from '@/types/store';
 
@@ -84,11 +85,19 @@ export async function findOrderByIdAndPhone(id: string, phone: string): Promise<
 
 /** The signed-in shopper's saved delivery details, if the profiles table exists. */
 export async function getProfileForUser(userId: string): Promise<Profile | null> {
-  const { data, error } = await supabaseAdmin()
+  let { data, error } = await supabaseAdmin()
     .from('profiles')
-    .select('full_name, phone, address, area, city')
+    .select(`full_name, phone, address, area, city, ${PROFILE_ADDRESS_COLUMNS}`)
     .eq('id', userId)
-    .maybeSingle();
+    .maybeSingle<Record<string, unknown>>();
+  if (error) {
+    // Database without the address-picker columns yet: fall back to the basics.
+    ({ data, error } = await supabaseAdmin()
+      .from('profiles')
+      .select('full_name, phone, address, area, city')
+      .eq('id', userId)
+      .maybeSingle<Record<string, unknown>>());
+  }
   if (error || !data) return null;
   return {
     fullName: String(data.full_name ?? ''),
@@ -96,5 +105,6 @@ export async function getProfileForUser(userId: string): Promise<Profile | null>
     address: String(data.address ?? ''),
     area: String(data.area ?? ''),
     city: String(data.city ?? 'Dhaka'),
+    ...profileAddressFields(data),
   };
 }

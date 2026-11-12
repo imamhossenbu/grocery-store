@@ -82,8 +82,18 @@ export interface OrderCustomer {
   phone: string;
   email?: string;
   address: string;
+  /** Upazila / thana name (older orders: a Dhaka area). */
   area: string;
+  /** District name (older orders: "Dhaka"). */
   city: string;
+  /** Structured parts from the address picker; absent on older orders. */
+  division?: string;
+  district?: string;
+  upazila?: string;
+  /** Union / town area, or a neighbourhood typed under a city thana. */
+  union?: string;
+  landmark?: string;
+  postcode?: string;
   deliverySlot: string;
   notes?: string;
 }
@@ -127,6 +137,13 @@ export interface Profile {
   address: string;
   area: string;
   city: string;
+  /** Address picker parts (names, not ids); absent until saved with the picker. */
+  division?: string;
+  district?: string;
+  upazila?: string;
+  union?: string;
+  landmark?: string;
+  postcode?: string;
 }
 
 /** What the cart, wishlist and "recently viewed" keep in localStorage. */

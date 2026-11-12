@@ -10,11 +10,12 @@ import { SITE_NAME, SITE_URL, SUPPORT_EMAIL, SUPPORT_PHONE } from '@/lib/constan
 import { Breadcrumbs } from '@/components/ui/Breadcrumbs';
 import { Block } from '@/components/ui/Skeleton';
 import { OrderProgress } from '@/components/order/OrderProgress';
-import { CopyButton, PrintButton } from '@/components/order/OrderActions';
+import { AutoPrint, CopyButton, PrintButton } from '@/components/order/OrderActions';
 import { StatusPill } from '@/components/order/StatusPill';
 import { PaymentBadge, paymentMethodLabel } from '@/components/order/PaymentBadge';
 import { CompletePaymentButton, RetryCheckoutButton } from '@/components/order/PaymentActions';
 import { TotalsRows } from '@/components/cart/OrderTotals';
+import { addressLines } from '@/lib/address/format';
 import type { Order } from '@/types/store';
 
 export const metadata: Metadata = {
@@ -73,6 +74,7 @@ async function OrderContent({ params, searchParams }: { params: Promise<{ id: st
 
   return (
     <div className="mt-4 space-y-6">
+      {sp.print === '1' && <AutoPrint />}
       {/* Print-only invoice header */}
       <div className="hidden items-start justify-between border-b border-[#ccc] pb-4 print:flex">
         <div>
@@ -119,7 +121,13 @@ async function OrderContent({ params, searchParams }: { params: Promise<{ id: st
             <Detail
               icon={<MapPin className="h-4 w-4" />}
               label="Address"
-              value={`${order.customer.address}, ${order.customer.area}, ${order.customer.city}`}
+              value={
+                <>
+                  {addressLines(order.customer).map((line, i) => (
+                    <span key={i} className={i === 0 ? 'block' : 'block font-medium text-[#3f5649]'}>{line}</span>
+                  ))}
+                </>
+              }
             />
             <Detail icon={<CalendarClock className="h-4 w-4" />} label="Delivery slot" value={order.customer.deliverySlot} />
             {order.customer.notes && <Detail icon={<MessageSquareText className="h-4 w-4" />} label="Notes" value={order.customer.notes} />}
@@ -343,7 +351,7 @@ function PaymentNotice({ order, flag }: { order: Order; flag: 'success' | 'faile
   return null;
 }
 
-function Detail({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+function Detail({ icon, label, value }: { icon: React.ReactNode; label: string; value: React.ReactNode }) {
   return (
     <div className="relative min-w-0 pl-7">
       <dt className="text-xs font-semibold text-[#5a7165]">

@@ -1,4 +1,4 @@
-import { DHAKA_AREAS } from '@/lib/constants';
+import { ADDRESS_LIMITS } from '@/lib/address/types';
 import { normalizePhone } from '@/lib/format';
 import { DELIVERY_DAYS, findSlot, type DeliveryDay } from './delivery';
 
@@ -11,9 +11,15 @@ export interface CheckoutInput {
   name: string;
   phone: string;
   email: string;
+  /** House / road / flat. */
   address: string;
-  area: string;
-  city: string;
+  /** Address picker ids (see src/lib/address); union may be free text under a city thana. */
+  division: string;
+  district: string;
+  upazila: string;
+  union: string;
+  landmark: string;
+  postcode: string;
   slot: string;
   day: string;
   notes: string;
@@ -25,10 +31,19 @@ export type FieldErrors = Partial<Record<CheckoutField, string>>;
 export const LIMITS = {
   name: 80,
   email: 120,
-  address: 200,
-  city: 40,
+  address: ADDRESS_LIMITS.address,
+  landmark: ADDRESS_LIMITS.landmark,
   notes: 300,
 } as const;
+
+/**
+ * Context the address picker knows on the client: a city thana has no
+ * unions, so the union/area field is optional there. The server decides
+ * this itself from the dataset (resolveAddress).
+ */
+export interface ValidationContext {
+  unionOptional?: boolean;
+}
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -41,16 +56,20 @@ export function readCheckoutInput(fd: FormData): CheckoutInput {
     name: get('name').replace(/\s+/g, ' '),
     phone: get('phone'),
     email: get('email').toLowerCase(),
-    address: get('address'),
-    area: get('area'),
-    city: get('city') || 'Dhaka',
+    address: get('address').replace(/[ \t]+/g, ' '),
+    division: get('division'),
+    district: get('district'),
+    upazila: get('upazila'),
+    union: get('union').replace(/\s+/g, ' '),
+    landmark: get('landmark').replace(/\s+/g, ' '),
+    postcode: get('postcode'),
     slot: get('slot'),
     day: get('day'),
     notes: get('notes'),
   };
 }
 
-export function validateField(field: CheckoutField, v: CheckoutInput): string | undefined {
+export function validateField(field: CheckoutField, v: CheckoutInput, ctx: ValidationContext = {}): string | undefined {
   switch (field) {
     case 'name':
       if (v.name.length < 2) return 'Please enter your full name.';
@@ -68,11 +87,23 @@ export function validateField(field: CheckoutField, v: CheckoutInput): string | 
       if (v.address.length < 5) return 'Please enter your house, road and flat details.';
       if (v.address.length > LIMITS.address) return `Address must be ${LIMITS.address} characters or fewer.`;
       return;
-    case 'area':
-      if (!(DHAKA_AREAS as readonly string[]).includes(v.area)) return 'Please choose your delivery area.';
+    case 'division':
       return;
-    case 'city':
-      if (v.city.length < 2 || v.city.length > LIMITS.city) return 'Please enter your city.';
+    case 'district':
+      if (!v.district) return 'Please choose your district.';
+      return;
+    case 'upazila':
+      if (!v.upazila) return 'Please choose your upazila or thana.';
+      return;
+    case 'union':
+      if (!v.union && !ctx.unionOptional) return 'Please choose your union or town area.';
+      if (v.union.length > ADDRESS_LIMITS.areaText) return `Keep the area under ${ADDRESS_LIMITS.areaText} characters.`;
+      return;
+    case 'landmark':
+      if (v.landmark.length > LIMITS.landmark) return `Landmark must be ${LIMITS.landmark} characters or fewer.`;
+      return;
+    case 'postcode':
+      if (v.postcode && !/^\d{4}$/.test(v.postcode)) return 'Post codes in Bangladesh have 4 digits.';
       return;
     case 'slot':
       if (!findSlot(v.slot)) return 'Please choose a delivery slot.';
@@ -86,12 +117,26 @@ export function validateField(field: CheckoutField, v: CheckoutInput): string | 
   }
 }
 
-const FIELDS: CheckoutField[] = ['name', 'phone', 'email', 'address', 'area', 'city', 'day', 'slot', 'notes'];
+export const CHECKOUT_FIELDS: CheckoutField[] = [
+  'name',
+  'phone',
+  'email',
+  'division',
+  'district',
+  'upazila',
+  'union',
+  'address',
+  'landmark',
+  'postcode',
+  'notes',
+  'day',
+  'slot',
+];
 
-export function validateCheckout(v: CheckoutInput): FieldErrors {
+export function validateCheckout(v: CheckoutInput, ctx: ValidationContext = {}): FieldErrors {
   const errors: FieldErrors = {};
-  for (const f of FIELDS) {
-    const e = validateField(f, v);
+  for (const f of CHECKOUT_FIELDS) {
+    const e = validateField(f, v, ctx);
     if (e) errors[f] = e;
   }
   return errors;

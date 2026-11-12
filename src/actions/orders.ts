@@ -14,6 +14,8 @@ import { discountFor } from '@/lib/pricing';
 import { formatBDT, normalizePhone } from '@/lib/format';
 import { asDeliveryDay, readCheckoutInput, validateCheckout } from '@/components/order/validation';
 import { deliverySlotText, isSlotAvailable } from '@/components/order/delivery';
+import { resolveAddress } from '@/lib/address/geo';
+import { formatAddress, formatLocality } from '@/lib/address/format';
 import type {
   CartLine,
   CartRefreshResult,
@@ -258,14 +260,23 @@ export async function placeOrder(_prev: PlaceOrderState, formData: FormData): Pr
     };
   }
 
-  const fieldErrors = validateCheckout(values);
+  // Shape checks first, then the address against the Bangladesh dataset:
+  // district → upazila/thana → union must exist and belong together. Whether
+  // the union is required (upazila) or optional free text (city thana) is
+  // decided by the dataset, not the client.
+  const fieldErrors = validateCheckout(values, { unionOptional: true });
+  const place = resolveAddress(values);
+  if (!place.ok) {
+    for (const [f, msg] of Object.entries(place.errors) as [keyof typeof place.errors, string][]) fieldErrors[f] ??= msg;
+  }
   const day = asDeliveryDay(values.day);
   if (!fieldErrors.slot && !fieldErrors.day && !isSlotAvailable(values.slot, day, now)) {
     fieldErrors.slot = 'That slot is no longer available today. Please pick a later slot or tomorrow.';
   }
-  if (Object.keys(fieldErrors).length > 0) {
+  if (Object.keys(fieldErrors).length > 0 || !place.ok) {
     return { status: 'error', message: 'Please fix the highlighted fields.', fieldErrors, values: echo };
   }
+  const where = place.value;
 
   let lines: CartLine[] | null = null;
   try {
@@ -306,8 +317,15 @@ export async function placeOrder(_prev: PlaceOrderState, formData: FormData): Pr
     phone: normalizePhone(values.phone)!,
     email: values.email || '',
     address: values.address,
-    area: values.area,
-    city: values.city,
+    // Kept for older readers: area = upazila/thana, city = district.
+    area: where.upazila,
+    city: where.district,
+    division: where.division,
+    district: where.district,
+    upazila: where.upazila,
+    union: where.union,
+    landmark: values.landmark,
+    postcode: values.postcode,
     deliverySlot: deliverySlotText(values.slot, day, now),
     notes: values.notes,
   };
@@ -416,7 +434,8 @@ export async function trackOrder(_prev: TrackState, formData: FormData): Promise
         total: o.total,
         paymentMethod: o.paymentMethod,
         paymentStatus: o.paymentStatus,
-        area: o.customer.area,
+        area: formatLocality(o.customer),
+        address: formatAddress(o.customer),
         deliverySlot: o.customer.deliverySlot,
         accessToken: res.accessToken,
       },

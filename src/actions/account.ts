@@ -1,17 +1,34 @@
 'use server';
 
+import { redirect } from 'next/navigation';
 import { getCurrentUser, supabaseServer } from '@/lib/supabase/server';
 import { supabaseAdmin, isMissingTableError } from '@/lib/supabase/admin';
 import { getProductsByIds } from '@/lib/data/catalog';
 import { normalizePhone } from '@/lib/format';
-import { DHAKA_AREAS } from '@/lib/constants';
+import { resolveAddress } from '@/lib/address/geo';
+import { ADDRESS_LIMITS } from '@/lib/address/types';
 import type { Product } from '@/types/store';
 
 export interface ProfileFormState {
   ok: boolean;
   message: string;
-  fieldErrors?: Partial<Record<'fullName' | 'phone' | 'address' | 'area' | 'city', string>>;
-  values?: { fullName: string; phone: string; address: string; area: string; city: string };
+  fieldErrors?: Partial<
+    Record<'fullName' | 'phone' | 'address' | 'area' | 'city' | 'division' | 'district' | 'upazila' | 'union' | 'landmark' | 'postcode', string>
+  >;
+  /** Echo of the form (address parts as picker ids or names). */
+  values?: {
+    fullName: string;
+    phone: string;
+    address: string;
+    area: string;
+    city: string;
+    division?: string;
+    district?: string;
+    upazila?: string;
+    union?: string;
+    landmark?: string;
+    postcode?: string;
+  };
 }
 
 function field(formData: FormData, name: string): string {
@@ -27,29 +44,62 @@ export async function updateProfile(_prev: ProfileFormState, formData: FormData)
   const user = await getCurrentUser();
   if (!user) return { ok: false, message: 'Your session has expired. Please sign in again.' };
 
-  const values = {
+  // Address parts come from the AddressPicker as dataset ids (district,
+  // upazila/thana, union) and are stored as names after validation.
+  const form = {
     fullName: field(formData, 'fullName'),
     phone: field(formData, 'phone'),
     address: field(formData, 'address'),
-    area: field(formData, 'area'),
-    city: field(formData, 'city') || 'Dhaka',
+    division: field(formData, 'division'),
+    district: field(formData, 'district'),
+    upazila: field(formData, 'upazila'),
+    union: field(formData, 'union'),
+    landmark: field(formData, 'landmark'),
+    postcode: field(formData, 'postcode'),
   };
+  const echo = { ...form, area: '', city: '' };
 
   const fieldErrors: ProfileFormState['fieldErrors'] = {};
-  if (values.fullName.length < 2 || values.fullName.length > 80) fieldErrors.fullName = 'Enter your full name (2–80 characters).';
+  if (form.fullName.length < 2 || form.fullName.length > 80) fieldErrors.fullName = 'Enter your full name (2–80 characters).';
 
   let phone = '';
-  if (values.phone) {
-    const normalized = normalizePhone(values.phone);
+  if (form.phone) {
+    const normalized = normalizePhone(form.phone);
     if (!normalized) fieldErrors.phone = 'Enter a valid Bangladeshi mobile number, e.g. 01712-345678.';
     else phone = normalized;
   }
-  if (values.address.length > 200) fieldErrors.address = 'Keep the address under 200 characters.';
-  if (values.address && values.address.length < 5) fieldErrors.address = 'Add house, road and block so our rider can find you.';
-  if (values.area && !(DHAKA_AREAS as readonly string[]).includes(values.area)) fieldErrors.area = 'Choose an area from the list.';
-  if (values.city.length > 60 || !/^[\p{L} .'-]+$/u.test(values.city)) fieldErrors.city = 'Enter a valid city.';
+  if (form.address.length > ADDRESS_LIMITS.address) fieldErrors.address = `Keep the address under ${ADDRESS_LIMITS.address} characters.`;
+  if (form.address && form.address.length < 5) fieldErrors.address = 'Add house, road and flat so our rider can find you.';
+  if (form.landmark.length > ADDRESS_LIMITS.landmark) fieldErrors.landmark = `Keep the landmark under ${ADDRESS_LIMITS.landmark} characters.`;
+  if (form.postcode && !/^\d{4}$/.test(form.postcode)) fieldErrors.postcode = 'Post codes in Bangladesh have 4 digits.';
 
-  if (Object.keys(fieldErrors).length) return { ok: false, message: 'Please fix the highlighted fields.', fieldErrors, values };
+  // The address is optional, but if any part is given it must be complete
+  // and consistent (each level belongs to its parent in the dataset).
+  const hasPlace = !!(form.district || form.upazila || form.union);
+  let place: { division: string; district: string; upazila: string; union: string } | null = null;
+  if (hasPlace || form.address) {
+    const resolved = resolveAddress(form);
+    if (resolved.ok) place = resolved.value;
+    else Object.assign(fieldErrors, resolved.errors);
+    if (!form.address && !fieldErrors.address) fieldErrors.address = 'Add house, road and flat so our rider can find you.';
+  }
+
+  if (Object.keys(fieldErrors).length) return { ok: false, message: 'Please fix the highlighted fields.', fieldErrors, values: echo };
+
+  const values = {
+    fullName: form.fullName,
+    phone,
+    address: form.address,
+    // Kept for older readers: area = upazila/thana, city = district.
+    area: place?.upazila ?? '',
+    city: place?.district ?? 'Dhaka',
+    division: place?.division ?? '',
+    district: place?.district ?? '',
+    upazila: place?.upazila ?? '',
+    union: place?.union ?? '',
+    landmark: place ? form.landmark : '',
+    postcode: place ? form.postcode : '',
+  };
 
   // Keep the display name in auth metadata too, so it survives even before
   // the profiles table exists.
@@ -66,6 +116,12 @@ export async function updateProfile(_prev: ProfileFormState, formData: FormData)
         address: values.address,
         area: values.area,
         city: values.city,
+        division: values.division || null,
+        district: values.district || null,
+        upazila: values.upazila || null,
+        union_name: values.union || null,
+        landmark: values.landmark || null,
+        postcode: values.postcode || null,
         updated_at: new Date().toISOString(),
       },
       { onConflict: 'id' }
@@ -75,12 +131,12 @@ export async function updateProfile(_prev: ProfileFormState, formData: FormData)
     return {
       ok: false,
       message: 'Your name was saved, but address details can’t be stored until our database setup is finished. Please try again later.',
-      values: { ...values, phone: phone || values.phone },
+      values: { ...echo, phone: phone || form.phone },
     };
   }
-  if (error) return { ok: false, message: 'We couldn’t save your profile. Please try again.', values };
+  if (error) return { ok: false, message: 'We couldn’t save your profile. Please try again.', values: echo };
 
-  return { ok: true, message: 'Profile saved. Checkout will now be filled in for you.', values: { ...values, phone } };
+  return { ok: true, message: 'Profile saved. Checkout will now be filled in for you.', values };
 }
 
 /**
@@ -98,4 +154,19 @@ export async function getWishlistProducts(ids: unknown): Promise<Product[]> {
   } catch {
     return [];
   }
+}
+
+/**
+ * Current price / stock for a set of product ids (reorder, buy again).
+ * Public catalog data only — same validation as getWishlistProducts.
+ */
+export async function getCurrentProducts(ids: unknown): Promise<Product[]> {
+  return getWishlistProducts(ids);
+}
+
+/** Revoke every session of the signed-in user (all devices), then go to /login. */
+export async function signOutEverywhere(): Promise<void> {
+  const supabase = await supabaseServer();
+  await supabase.auth.signOut({ scope: 'global' });
+  redirect('/login');
 }

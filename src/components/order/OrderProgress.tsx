@@ -65,10 +65,17 @@ export function OrderProgress({ status, history, createdAt, layout = 'vertical' 
             {!last && (
               <span
                 aria-hidden
-                className={`absolute left-[19px] top-10 h-[calc(100%-2.5rem)] w-0.5 ${done ? 'bg-[#1a663b]' : 'bg-[#dcebe2]'} ${
+                className={`absolute left-[19px] top-10 h-[calc(100%-2.5rem)] w-0.5 bg-[#dcebe2] ${
                   horizontal ? 'md:left-[calc(50%+1.25rem)] md:top-5 md:h-0.5 md:w-[calc(100%-2rem)]' : ''
                 }`}
-              />
+              >
+                {done && (
+                  <span
+                    className={`absolute inset-0 rounded-full bg-[#1a663b] fb-draw-y ${horizontal ? 'md:fb-draw-x' : ''}`}
+                    style={{ '--fb-i': i } as React.CSSProperties}
+                  />
+                )}
+              </span>
             )}
             <span
               className={`relative z-10 grid h-10 w-10 shrink-0 place-items-center rounded-full border-2 transition ${
