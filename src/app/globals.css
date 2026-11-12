@@ -1,26 +1,93 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f9fbf9;
+  --foreground: #112a1d;
+  --card: #ffffff;
+  --card-foreground: #112a1d;
+  --primary: #1a663b;
+  --primary-hover: #14522f;
+  --primary-light: #e8f5ee;
+  --secondary: #f0f7f2;
+  --forest: #0f2c1d;
+  --forest-light: #1a432e;
+  --highlight: #f5b82e;
+  --highlight-dark: #442c04;
+  --muted: #5a7165;
+  --border: #dfece3;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-sans: var(--font-jakarta), system-ui, sans-serif;
+  --font-display: var(--font-fraunces), Georgia, serif;
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-jakarta), system-ui, -apple-system, sans-serif;
+  overflow-x: hidden;
+}
+
+.font-display {
+  font-family: var(--font-fraunces), Georgia, serif;
+}
+
+/* Custom Organic Mesh & Leaf Backgrounds */
+.bg-hero-mesh {
+  background:
+    radial-gradient(ellipse at 15% 20%, rgba(164, 232, 190, 0.45), transparent 52%),
+    radial-gradient(ellipse at 85% 15%, rgba(245, 184, 46, 0.16), transparent 45%),
+    linear-gradient(180deg, #eff8f2 0%, #f9fbf9 100%);
+}
+
+.bg-forest-gradient {
+  background: linear-gradient(135deg, #0f2c1d 0%, #1c4d33 100%);
+}
+
+.bg-emerald-gradient {
+  background: linear-gradient(135deg, #1a663b 0%, #2ca05d 100%);
+}
+
+.shadow-soft {
+  box-shadow: 0 4px 20px -4px rgba(15, 44, 29, 0.06), 0 2px 6px -1px rgba(15, 44, 29, 0.04);
+}
+
+.shadow-card {
+  box-shadow: 0 20px 42px -18px rgba(15, 44, 29, 0.14), 0 4px 12px -3px rgba(15, 44, 29, 0.06);
+}
+
+.shadow-glow {
+  box-shadow: 0 12px 28px -8px rgba(26, 102, 59, 0.42);
+}
+
+@keyframes floatSlow {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-7px);
+  }
+}
+
+.animate-float {
+  animation: floatSlow 4.5s ease-in-out infinite;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #f0f7f2;
+}
+::-webkit-scrollbar-thumb {
+  background: #b9d8c5;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #1a663b;
 }
