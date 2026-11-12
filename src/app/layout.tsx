@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from 'next';
 import { Fraunces, Plus_Jakarta_Sans } from 'next/font/google';
 import './globals.css';
 import { ShopProvider } from '@/context/ShopContext';
+import { ConfirmProvider } from '@/components/ui/ConfirmDialog';
+import { MotionProvider } from '@/components/ui/motion';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { CartDrawer } from '@/components/cart/CartDrawer';
@@ -31,19 +33,23 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`h-full antialiased ${jakarta.variable} ${fraunces.variable}`}>
+    <html lang="en" suppressHydrationWarning className={`h-full antialiased ${jakarta.variable} ${fraunces.variable}`}>
       <body className="min-h-full flex flex-col font-sans bg-[#f9fbf9] text-[#112a1d]">
         <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[70] focus:rounded-full focus:bg-white focus:px-4 focus:py-2 focus:shadow-card">
           Skip to content
         </a>
-        <ShopProvider>
-          <DatabaseNotice />
-          <Header />
-          <main id="main" className="flex-1">{children}</main>
-          <Footer />
-          <CartDrawer />
-          <Toaster />
-        </ShopProvider>
+        <MotionProvider>
+          <ShopProvider>
+            <ConfirmProvider>
+              <DatabaseNotice />
+              <Header />
+              <main id="main" className="flex-1">{children}</main>
+              <Footer />
+              <CartDrawer />
+              <Toaster />
+            </ConfirmProvider>
+          </ShopProvider>
+        </MotionProvider>
       </body>
     </html>
   );

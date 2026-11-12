@@ -142,7 +142,7 @@ export function DropdownMenu({ trigger, label, items, align = 'end', triggerClas
           aria-labelledby={`${id}-trigger`}
           onKeyDown={onMenuKey}
           className={cx(
-            'absolute z-[70] min-w-[13rem] rounded-2xl border border-[#dfece3] bg-white p-1.5 shadow-card',
+            'absolute z-[70] w-max min-w-[13rem] max-w-[min(20rem,90vw)] rounded-2xl border border-[#dfece3] bg-white p-1.5 shadow-card',
             align === 'end' ? 'right-0' : 'left-0',
             side === 'bottom' ? 'top-full mt-2' : 'bottom-full mb-2',
             menuClassName

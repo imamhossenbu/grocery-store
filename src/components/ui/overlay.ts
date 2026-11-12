@@ -1,8 +1,12 @@
-'use client';
-
-import { useEffect, useRef, useState, type AnimationEvent, type RefObject } from 'react';
+import * as React from 'react';
+import type { RefObject } from 'react';
 
 /**
+ * Deliberately NOT a "use client" module so `cx` / `preferredSide` can be
+ * imported by Server Components too (hooks are reached through the React
+ * namespace for that reason). The hooks must only be called from Client
+ * Components.
+ *
  * Shared behaviour for overlays (Dialog, Drawer, Select, DropdownMenu,
  * Popover, Tooltip). Kept dependency-free so every primitive in this folder
  * behaves the same way:
@@ -42,14 +46,14 @@ export function useDismissableLayer(
   onDismiss: () => void,
   { ignore = [], outsidePress = true }: DismissOptions = {}
 ) {
-  const dismissRef = useRef(onDismiss);
-  const ignoreRef = useRef(ignore);
-  useEffect(() => {
+  const dismissRef = React.useRef(onDismiss);
+  const ignoreRef = React.useRef(ignore);
+  React.useEffect(() => {
     dismissRef.current = onDismiss;
     ignoreRef.current = ignore;
   });
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (!active) return;
     const id = Symbol('layer');
     layerStack.push(id);
@@ -84,7 +88,7 @@ export function useFocusTrap(
   active: boolean,
   { initialFocus, restoreFocus = true }: { initialFocus?: RefObject<HTMLElement | null>; restoreFocus?: boolean } = {}
 ) {
-  useEffect(() => {
+  React.useEffect(() => {
     if (!active) return;
     const previous = document.activeElement as HTMLElement | null;
     const root = ref.current;
@@ -127,7 +131,7 @@ let savedOverflow = '';
 let savedPadding = '';
 
 export function useScrollLock(active: boolean) {
-  useEffect(() => {
+  React.useEffect(() => {
     if (!active) return;
     const body = document.body;
     if (lockCount === 0) {
@@ -164,23 +168,3 @@ export function cx(...parts: (string | false | null | undefined)[]): string {
   return parts.filter(Boolean).join(' ');
 }
 
-/**
- * Keeps a popup mounted while its exit animation plays.
- * Spread `presenceProps` on the animated element (it carries data-closing
- * and the animationend handler) and render while `mounted`.
- */
-export function usePresence(open: boolean) {
-  const [mounted, setMounted] = useState(open);
-  if (open && !mounted) setMounted(true);
-  const closing = mounted && !open;
-  return {
-    mounted,
-    closing,
-    presenceProps: {
-      'data-closing': closing || undefined,
-      onAnimationEnd: (e: AnimationEvent<HTMLElement>) => {
-        if (closing && e.target === e.currentTarget) setMounted(false);
-      },
-    },
-  };
-}
