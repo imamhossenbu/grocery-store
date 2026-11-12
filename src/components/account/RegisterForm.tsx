@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { signUp, type AuthFormState } from '@/actions/auth';
 import { FieldFooter, FormAlert, PasswordField, SubmitButton, TextField } from './FormControls';
 import { PasswordStrength } from './PasswordStrength';
+import { Checkbox } from '@/components/ui/Checkbox';
 import { OtpVerifyForm } from './OtpVerifyForm';
 import { safeNext } from './safe-next';
 
@@ -86,20 +87,24 @@ export function RegisterForm() {
         />
 
         <div>
-          <label className="flex items-start gap-3 text-sm text-[#445c50]">
-            <input
-              type="checkbox"
-              name="terms"
-              required
-              aria-invalid={state.fieldErrors?.terms ? true : undefined}
-              className="mt-0.5 h-4 w-4 shrink-0 rounded border-[#b9d8c5] accent-[#1a663b]"
-            />
-            <span>
-              I agree to the{' '}
-              <Link href="/terms" className="font-semibold text-[#1a663b] hover:underline">terms of service</Link> and{' '}
-              <Link href="/privacy" className="font-semibold text-[#1a663b] hover:underline">privacy policy</Link>.
-            </span>
-          </label>
+          <Checkbox
+            name="terms"
+            required
+            aria-invalid={state.fieldErrors?.terms ? true : undefined}
+            label={
+              <span className="font-normal text-[#234835]">
+                I agree to the{' '}
+                <Link href="/terms" className="font-semibold text-[#1a663b] hover:underline">
+                  terms of service
+                </Link>{' '}
+                and{' '}
+                <Link href="/privacy" className="font-semibold text-[#1a663b] hover:underline">
+                  privacy policy
+                </Link>
+                .
+              </span>
+            }
+          />
           <FieldFooter error={state.fieldErrors?.terms} />
         </div>
 

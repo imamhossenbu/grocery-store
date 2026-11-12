@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createContext, useCallback, useContext, useMemo, useTransition } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
+import { ProductGridSkeleton } from '@/components/store-ui/Skeletons';
 
 /**
  * Client glue for URL-driven listings: filter changes go through
@@ -32,12 +34,53 @@ export function ListingProvider({ children }: { children: React.ReactNode }) {
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
-/** Results wrapper that dims while a filter change is loading. */
-export function PendingArea({ children }: { children: React.ReactNode }) {
+/**
+ * Results wrapper. While a filter / sort / page change is rendering on the
+ * server, the current results dim and a matching skeleton grid fades in on
+ * top (same grid, same card size), so the area never goes blank or jumps.
+ */
+export function PendingArea({ children, skeletonCount = 8 }: { children: React.ReactNode; skeletonCount?: number }) {
   const { pending } = useListing();
   return (
-    <div aria-busy={pending} className={`transition-opacity duration-200 ${pending ? 'opacity-50 pointer-events-none' : ''}`}>
-      {children}
+    <div aria-busy={pending} className="relative">
+      <div className={`transition-opacity duration-200 ${pending ? 'pointer-events-none opacity-25' : 'opacity-100'}`}>{children}</div>
+      <AnimatePresence>
+        {pending && (
+          <motion.div
+            key="pending"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1, transition: { duration: 0.18, delay: 0.08 } }}
+            exit={{ opacity: 0, transition: { duration: 0.15 } }}
+            className="pointer-events-none absolute inset-x-0 top-0 max-h-full overflow-hidden"
+            aria-hidden="true"
+          >
+            <ProductGridSkeleton count={Math.max(2, Math.min(skeletonCount, 8))} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <span className="sr-only" role="status">
+        {pending ? 'Updating products…' : ''}
+      </span>
+    </div>
+  );
+}
+
+/** Thin animated bar at the top of the results while the next page renders. */
+export function PendingBar() {
+  const { pending } = useListing();
+  return (
+    <div aria-hidden="true" className="relative h-0.5 overflow-hidden rounded-full">
+      <AnimatePresence>
+        {pending && (
+          <motion.span
+            key="bar"
+            className="absolute inset-y-0 left-0 w-1/3 rounded-full bg-[#1a663b]"
+            initial={{ x: '-100%', opacity: 0 }}
+            animate={{ x: '300%', opacity: 1, transition: { x: { duration: 1.1, repeat: Infinity, ease: 'easeInOut' }, opacity: { duration: 0.15 } } }}
+            exit={{ opacity: 0, transition: { duration: 0.2 } }}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { ChevronDown } from 'lucide-react';
+import { Accordion } from '@/components/ui/Accordion';
 import { FAQ_GROUPS } from '@/components/info/faq-data';
 import { InfoBody, InfoHero, JsonLd, SupportCard } from '@/components/info/InfoLayout';
 
@@ -45,17 +45,10 @@ export default function FaqPage() {
             {FAQ_GROUPS.map((g) => (
               <section key={g.id} id={g.id} aria-labelledby={`${g.id}-title`} className="scroll-mt-40">
                 <h2 id={`${g.id}-title`} className="font-display text-2xl font-bold text-[#112a1d]">{g.title}</h2>
-                <div className="mt-4 space-y-3">
-                  {g.items.map((it) => (
-                    <details key={it.q} className="group rounded-2xl border border-[#dfece3] bg-white shadow-soft open:border-[#1a663b]/30">
-                      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded-2xl px-5 py-4 text-[15px] font-bold text-[#112a1d] hover:text-[#1a663b] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1a663b] [&::-webkit-details-marker]:hidden">
-                        {it.q}
-                        <ChevronDown className="h-5 w-5 shrink-0 text-[#5a7165] transition-transform group-open:rotate-180" aria-hidden="true" />
-                      </summary>
-                      <p className="px-5 pb-5 text-sm leading-relaxed text-[#445c50]">{it.a}</p>
-                    </details>
-                  ))}
-                </div>
+                <Accordion
+                  className="mt-4 rounded-2xl border border-[#dfece3] bg-white px-5 shadow-soft"
+                  items={g.items.map((it, i) => ({ id: `${g.id}-${i}`, title: it.q, content: <p className="text-[15px] leading-relaxed text-[#344b3f]">{it.a}</p> }))}
+                />
               </section>
             ))}
             <SupportCard />

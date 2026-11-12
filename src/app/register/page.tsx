@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
-import { AuthShell, FormSkeleton } from '@/components/account/AuthShell';
+import { AuthShell } from '@/components/account/AuthShell';
+import { AuthFormSkeleton } from '@/components/store-ui/Skeletons';
 import { RegisterForm } from '@/components/account/RegisterForm';
 
 export const metadata: Metadata = {
@@ -12,7 +13,7 @@ export const metadata: Metadata = {
 export default function RegisterPage() {
   return (
     <AuthShell title="Create your account" subtitle="It takes less than a minute — and checkout gets much quicker.">
-      <Suspense fallback={<FormSkeleton fields={4} />}>
+      <Suspense fallback={<AuthFormSkeleton fields={4} extra />}>
         <RegisterForm />
       </Suspense>
     </AuthShell>

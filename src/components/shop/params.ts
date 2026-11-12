@@ -2,8 +2,12 @@
  * URL <-> filter state for the product listings (/shop, /category/[slug],
  * /search). Shared by server and client components, so no server imports.
  *
- * Query keys: q, category, min, max, stock=1, sale=1, sort, page
+ * Query keys: q, category, min, max, stock=1, sale=1, sort, page, per
  */
+
+/** Page sizes offered on listings; the first one is the default. */
+export const PER_PAGE_OPTIONS = [12, 24, 48] as const;
+export const DEFAULT_PER_PAGE = PER_PAGE_OPTIONS[0];
 
 export const SORT_OPTIONS = [
   { value: 'popular', label: 'Most popular' },
@@ -27,6 +31,7 @@ export interface ListingFilters {
   onSale: boolean;
   sort: ListingSort;
   page: number;
+  perPage: number;
 }
 
 function first(v: string | string[] | undefined): string | undefined {
@@ -51,6 +56,7 @@ export function parseFilters(sp: RawSearchParams): ListingFilters {
   if (min !== undefined && max !== undefined && min > max) [min, max] = [max, min];
   const q = first(sp.q)?.slice(0, 100);
   const category = first(sp.category)?.slice(0, 60);
+  const per = Number(first(sp.per));
   return {
     q,
     category,
@@ -60,6 +66,7 @@ export function parseFilters(sp: RawSearchParams): ListingFilters {
     onSale: first(sp.sale) === '1',
     sort: sort && SORT_VALUES.has(sort) ? (sort as ListingSort) : 'popular',
     page: Number.isInteger(page) && page > 0 ? Math.min(page, 1000) : 1,
+    perPage: (PER_PAGE_OPTIONS as readonly number[]).includes(per) ? per : DEFAULT_PER_PAGE,
   };
 }
 
@@ -73,6 +80,7 @@ export function toSearchParams(f: Partial<ListingFilters>): URLSearchParams {
   if (f.inStock) p.set('stock', '1');
   if (f.onSale) p.set('sale', '1');
   if (f.sort && f.sort !== 'popular') p.set('sort', f.sort);
+  if (f.perPage && f.perPage !== DEFAULT_PER_PAGE) p.set('per', String(f.perPage));
   if (f.page && f.page > 1) p.set('page', String(f.page));
   return p;
 }

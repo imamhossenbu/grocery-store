@@ -1,13 +1,14 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Suspense } from 'react';
-import { Search, SearchX } from 'lucide-react';
+import { SearchX } from 'lucide-react';
 import { getBestSellers, getTopCategories } from '@/lib/data/catalog';
 import { suggestQuery } from '@/lib/data/discovery';
 import { Breadcrumbs } from '@/components/ui/Breadcrumbs';
 import { ProductGrid } from '@/components/product/ProductCard';
 import { ProductListing } from '@/components/shop/ProductListing';
-import { ListingSkeleton } from '@/components/shop/ListingSkeleton';
+import { ListingSkeleton } from '@/components/store-ui/Skeletons';
+import { SearchBar } from '@/components/store-ui/SearchBar';
 import { parseFilters, type RawSearchParams } from '@/components/shop/params';
 
 type SP = Promise<RawSearchParams>;
@@ -53,25 +54,7 @@ function SearchHeader({ q }: { q?: string }) {
           'Search groceries'
         )}
       </h1>
-      <form action="/search" method="get" role="search" className="mt-5 flex max-w-2xl items-center gap-2 rounded-full border border-[#cfe3d6] bg-white p-1.5 pl-5 shadow-soft focus-within:border-[#1a663b]">
-        <Search className="h-5 w-5 shrink-0 text-[#7e9688]" aria-hidden />
-        <label htmlFor="search-page-q" className="sr-only">
-          Search products
-        </label>
-        <input
-          id="search-page-q"
-          key={q}
-          name="q"
-          type="search"
-          defaultValue={q}
-          required
-          placeholder="Search for mango, doi, rice…"
-          className="min-w-0 flex-1 bg-transparent py-2 text-base text-[#112a1d] outline-none placeholder:text-[#9ab5a5]"
-        />
-        <button type="submit" className="h-11 shrink-0 rounded-full bg-emerald-gradient px-6 text-sm font-bold text-white shadow-glow hover:brightness-105 cursor-pointer">
-          Search
-        </button>
-      </form>
+      <SearchBar id="search-page-q" defaultValue={q} placeholder="Search for mango, doi, rice…" label="Search products" className="mt-5 max-w-2xl shadow-soft" />
     </header>
   );
 }

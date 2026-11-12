@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
-import { AuthShell, FormSkeleton } from '@/components/account/AuthShell';
+import { AuthShell } from '@/components/account/AuthShell';
+import { AuthFormSkeleton } from '@/components/store-ui/Skeletons';
 import { LoginForm } from '@/components/account/LoginForm';
 
 export const metadata: Metadata = {
@@ -12,7 +13,7 @@ export const metadata: Metadata = {
 export default function LoginPage() {
   return (
     <AuthShell title="Welcome back" subtitle="Sign in to check out faster and follow your orders.">
-      <Suspense fallback={<FormSkeleton fields={2} />}>
+      <Suspense fallback={<AuthFormSkeleton fields={2} />}>
         <LoginForm />
       </Suspense>
     </AuthShell>

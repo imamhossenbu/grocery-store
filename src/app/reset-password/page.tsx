@@ -2,7 +2,8 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { LinkIcon } from 'lucide-react';
-import { AuthShell, FormSkeleton } from '@/components/account/AuthShell';
+import { AuthShell } from '@/components/account/AuthShell';
+import { AuthFormSkeleton } from '@/components/store-ui/Skeletons';
 import { NewPasswordForm } from '@/components/account/NewPasswordForm';
 import { getViewer } from '@/lib/data/account';
 
@@ -14,7 +15,7 @@ export const metadata: Metadata = {
 export default function ResetPasswordPage() {
   return (
     <AuthShell title="Choose a new password" subtitle="Pick something you don’t use on other websites.">
-      <Suspense fallback={<FormSkeleton fields={2} />}>
+      <Suspense fallback={<AuthFormSkeleton fields={2} />}>
         <ResetGate />
       </Suspense>
     </AuthShell>

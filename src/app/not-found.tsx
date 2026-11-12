@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Home, Search, ShoppingBasket } from 'lucide-react';
+import { Home, ShoppingBasket } from 'lucide-react';
+import { SearchBar } from '@/components/store-ui/SearchBar';
 import { getTopCategories } from '@/lib/data/catalog';
 
 export const metadata: Metadata = {
@@ -23,23 +24,7 @@ export default async function NotFound() {
           The page or product you&apos;re looking for may have sold out, moved, or never existed. Try a search instead.
         </p>
 
-        <form action="/search" method="get" role="search" className="mx-auto mt-8 flex max-w-xl items-center gap-2 rounded-full border border-[#cfe3d6] bg-white p-1.5 pl-5 shadow-card focus-within:border-[#1a663b]">
-          <Search className="h-5 w-5 shrink-0 text-[#7e9688]" aria-hidden />
-          <label htmlFor="nf-search" className="sr-only">
-            Search groceries
-          </label>
-          <input
-            id="nf-search"
-            name="q"
-            type="search"
-            required
-            placeholder="Search for mango, doi, rice…"
-            className="min-w-0 flex-1 bg-transparent py-2 text-base text-[#112a1d] outline-none placeholder:text-[#9ab5a5]"
-          />
-          <button type="submit" className="h-11 shrink-0 rounded-full bg-emerald-gradient px-6 text-sm font-bold text-white shadow-glow cursor-pointer">
-            Search
-          </button>
-        </form>
+        <SearchBar id="nf-search" placeholder="Search for mango, doi, rice…" className="mx-auto mt-8 max-w-xl" />
 
         {categories.length > 0 && (
           <div className="mt-10">

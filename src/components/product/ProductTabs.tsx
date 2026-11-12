@@ -1,75 +1,55 @@
 'use client';
 
-import { useId, useRef, useState } from 'react';
+import { useId, useState } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
+import { TabPanel, Tabs } from '@/components/ui/Tabs';
 
-export interface TabItem {
+export interface ProductTabItem {
   id: string;
   label: string;
   content: React.ReactNode;
 }
 
-/** Accessible tabs (WAI-ARIA pattern, arrow-key navigation). Panels are server-rendered content. */
-export function ProductTabs({ tabs }: { tabs: TabItem[] }) {
-  const [active, setActive] = useState(0);
-  const base = useId();
-  const refs = useRef<(HTMLButtonElement | null)[]>([]);
-
-  const focus = (i: number) => {
-    const n = (i + tabs.length) % tabs.length;
-    setActive(n);
-    refs.current[n]?.focus();
-  };
+/**
+ * Product information tabs on the shared Tabs primitive (sliding underline,
+ * arrow-key navigation). Every panel stays in the DOM — inactive ones are
+ * `hidden` — so the description and delivery copy remain crawlable.
+ */
+export function ProductTabs({ tabs }: { tabs: ProductTabItem[] }) {
+  const [active, setActive] = useState(tabs[0]?.id ?? '');
+  const idBase = `pt${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
 
   return (
     <div>
-      <div
-        role="tablist"
+      <Tabs
+        idBase={idBase}
         aria-label="Product information"
-        className="flex gap-1 overflow-x-auto border-b border-[#dfece3] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        onKeyDown={(e) => {
-          if (e.key === 'ArrowRight') focus(active + 1);
-          else if (e.key === 'ArrowLeft') focus(active - 1);
-          else if (e.key === 'Home') focus(0);
-          else if (e.key === 'End') focus(tabs.length - 1);
-          else return;
-          e.preventDefault();
-        }}
-      >
-        {tabs.map((t, i) => (
-          <button
-            key={t.id}
-            ref={(el) => {
-              refs.current[i] = el;
-            }}
-            type="button"
-            role="tab"
-            id={`${base}-tab-${t.id}`}
-            aria-selected={i === active}
-            aria-controls={`${base}-panel-${t.id}`}
-            tabIndex={i === active ? 0 : -1}
-            onClick={() => setActive(i)}
-            className={`relative shrink-0 px-4 py-3 text-sm font-bold transition cursor-pointer ${
-              i === active ? 'text-[#1a663b]' : 'text-[#5a7165] hover:text-[#112a1d]'
-            }`}
+        variant="underline"
+        value={active}
+        onValueChange={setActive}
+        items={tabs.map((t) => ({ value: t.id, label: t.label }))}
+        className="text-[15px]"
+      />
+      <TabPanel idBase={idBase} value={active} className="pt-6">
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={active}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4, transition: { duration: 0.1 } }}
+            transition={{ duration: 0.2, ease: [0.2, 0.8, 0.2, 1] }}
           >
-            {t.label}
-            {i === active && <span className="absolute inset-x-3 -bottom-px h-0.5 rounded-full bg-[#1a663b]" />}
-          </button>
+            {tabs.find((t) => t.id === active)?.content}
+          </motion.div>
+        </AnimatePresence>
+      </TabPanel>
+      {tabs
+        .filter((t) => t.id !== active)
+        .map((t) => (
+          <div key={t.id} hidden>
+            {t.content}
+          </div>
         ))}
-      </div>
-      {tabs.map((t, i) => (
-        <div
-          key={t.id}
-          role="tabpanel"
-          id={`${base}-panel-${t.id}`}
-          aria-labelledby={`${base}-tab-${t.id}`}
-          hidden={i !== active}
-          tabIndex={0}
-          className="pt-6 outline-none focus-visible:ring-2 focus-visible:ring-[#1a663b]/30 rounded-xl"
-        >
-          {t.content}
-        </div>
-      ))}
     </div>
   );
 }

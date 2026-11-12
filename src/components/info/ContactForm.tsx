@@ -1,19 +1,29 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useState } from 'react';
 import { CheckCircle2 } from 'lucide-react';
 import { submitContactMessage, type ContactFormState } from '@/actions/contact';
-import { FieldFooter, FieldLabel, FormAlert, inputClass, SubmitButton, TextField } from '@/components/account/FormControls';
+import { FormAlert, SubmitButton, TextField } from '@/components/account/FormControls';
+import { Field, PhoneInput, Textarea } from '@/components/ui/Field';
 import { CONTACT_SUBJECTS } from './contact-subjects';
+import { Select } from '@/components/ui/Select';
 
 const initial: ContactFormState = { ok: false, message: '' };
 
-const ok = 'border-[#d3e5da] focus:border-[#1a663b] focus:ring-[#1a663b]/10';
-const bad = 'border-red-300 focus:border-red-500 focus:ring-red-100';
 
-export function ContactForm() {
+export interface ContactDefaults {
+  name?: string;
+  email?: string;
+  phone?: string;
+  orderId?: string;
+  subject?: string;
+  message?: string;
+}
+
+/** `defaults` pre-fills the form (e.g. for a signed-in customer). */
+export function ContactForm({ defaults }: { defaults?: ContactDefaults } = {}) {
   const [state, action, pending] = useActionState(submitContactMessage, initial);
-  const v = state.values;
+  const v = state.values ?? defaults;
   const err = state.fieldErrors ?? {};
 
   if (state.ok) {
@@ -37,48 +47,54 @@ export function ContactForm() {
       <div className="grid gap-5 sm:grid-cols-2">
         <TextField label="Your name" name="name" autoComplete="name" required maxLength={80} defaultValue={v?.name} error={err.name} />
         <TextField label="Email" name="email" type="email" inputMode="email" autoComplete="email" required maxLength={200} defaultValue={v?.email} error={err.email} />
-        <TextField label="Mobile number" name="phone" type="tel" inputMode="tel" autoComplete="tel-national" optional placeholder="01XXXXXXXXX" maxLength={20} defaultValue={v?.phone} error={err.phone} />
+        <Field label="Mobile number" optional error={err.phone}>
+          {({ state, ...p }) => <PhoneInput name="phone" defaultValue={v?.phone} state={state} {...p} />}
+        </Field>
         <TextField label="Order number" name="orderId" optional placeholder="FB-123456" maxLength={9} defaultValue={v?.orderId} hint="Helps us find your order faster." />
       </div>
 
-      <div>
-        <FieldLabel htmlFor="contact-subject" label="Topic" />
-        <select
-          id="contact-subject"
-          name="subject"
-          required
-          defaultValue={v?.subject ?? ''}
-          aria-invalid={err.subject ? true : undefined}
-          aria-describedby={err.subject ? 'contact-subject-error' : undefined}
-          className={`${inputClass} ${err.subject ? bad : ok}`}
-        >
-          <option value="" disabled>Choose a topic</option>
-          {CONTACT_SUBJECTS.map((s) => <option key={s} value={s}>{s}</option>)}
-        </select>
-        <FieldFooter error={err.subject} errorId="contact-subject-error" />
-      </div>
+      <Field label="Topic" required error={err.subject}>
+        {({ state, ...p }) => (
+          <Select
+            name="subject"
+            required
+            defaultValue={v?.subject ?? ''}
+            placeholder="Choose a topic"
+            invalid={state === 'error'}
+            id={p.id}
+            aria-describedby={p['aria-describedby']}
+            options={CONTACT_SUBJECTS.map((s) => ({ value: s, label: s }))}
+          />
+        )}
+      </Field>
 
-      <div>
-        <FieldLabel htmlFor="contact-message" label="Message" />
-        <textarea
-          id="contact-message"
-          name="message"
-          required
-          rows={6}
-          minLength={10}
-          maxLength={2000}
-          placeholder="How can we help?"
-          defaultValue={v?.message}
-          aria-invalid={err.message ? true : undefined}
-          aria-describedby={err.message ? 'contact-message-error' : undefined}
-          className={`${inputClass} resize-y ${err.message ? bad : ok}`}
-        />
-        <FieldFooter error={err.message} errorId="contact-message-error" />
-      </div>
+      <MessageField defaultValue={v?.message} error={err.message} />
 
       {state.message && <FormAlert ok={state.ok} message={state.message} />}
 
       <SubmitButton pending={pending} pendingLabel="Sending…" className="w-full sm:w-auto">Send message</SubmitButton>
     </form>
+  );
+}
+
+function MessageField({ defaultValue, error }: { defaultValue?: string; error?: string }) {
+  const [len, setLen] = useState(defaultValue?.length ?? 0);
+  return (
+    <Field label="Message" required error={error} counter={`${len}/2000`}>
+      {({ state, ...p }) => (
+        <Textarea
+          name="message"
+          required
+          minRows={5}
+          minLength={10}
+          maxLength={2000}
+          placeholder="How can we help?"
+          defaultValue={defaultValue}
+          onChange={(e) => setLen(e.target.value.length)}
+          state={state}
+          {...p}
+        />
+      )}
+    </Field>
   );
 }

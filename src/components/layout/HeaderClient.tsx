@@ -2,8 +2,12 @@
 
 import { useRef, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, ChevronDown, Heart, LayoutGrid, Leaf, Menu, PackageSearch, Search, ShoppingBasket, X } from 'lucide-react';
+import { ArrowRight, ChevronDown, Heart, LayoutGrid, Leaf, Menu, PackageSearch, Search, ShoppingBasket } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
 import { HeaderAccount } from './HeaderAccount';
+import { Tooltip } from '@/components/ui/Tooltip';
+import { Drawer } from '@/components/ui/Dialog';
+import { popupMotion } from '@/components/ui/motion';
 import { useShop } from '@/context/ShopContext';
 import { formatBDT } from '@/lib/format';
 import { HeaderSearch, type SearchIndex } from './HeaderSearch';
@@ -61,15 +65,19 @@ export function HeaderClient({ categories, index }: Props) {
           <button onClick={() => setSearchOpen((s) => !s)} className="md:hidden grid place-items-center w-10 h-10 rounded-full text-[#1a663b] hover:bg-[#f0f7f2] cursor-pointer" aria-label="Search">
             <Search className="w-5 h-5" />
           </button>
-          <Link href="/track-order" className="hidden sm:grid place-items-center w-10 h-10 rounded-full text-[#1a663b] hover:bg-[#f0f7f2]" title="Track order" aria-label="Track order">
+          <Tooltip content="Track order" side="bottom">
+          <Link href="/track-order" className="hidden sm:grid place-items-center w-10 h-10 rounded-full text-[#1a663b] hover:bg-[#f0f7f2]" aria-label="Track order">
             <PackageSearch className="w-5 h-5" />
           </Link>
-          <Link href="/wishlist" className="relative grid place-items-center w-10 h-10 rounded-full text-[#1a663b] hover:bg-[#f0f7f2]" title="Wishlist" aria-label={`Wishlist (${hydrated ? wishlist.length : 0})`}>
+          </Tooltip>
+          <Tooltip content="Wishlist" side="bottom">
+          <Link href="/wishlist" className="relative grid place-items-center w-10 h-10 rounded-full text-[#1a663b] hover:bg-[#f0f7f2]" aria-label={`Wishlist (${hydrated ? wishlist.length : 0})`}>
             <Heart className="w-5 h-5" />
             {hydrated && wishlist.length > 0 && (
               <span className="absolute top-0.5 right-0.5 min-w-[18px] h-[18px] rounded-full bg-red-500 text-white text-[10px] font-extrabold grid place-items-center px-1">{wishlist.length}</span>
             )}
           </Link>
+          </Tooltip>
           <HeaderAccount />
           <button
             onClick={() => setCartOpen(true)}
@@ -83,18 +91,28 @@ export function HeaderClient({ categories, index }: Props) {
               )}
             </span>
             <span className="hidden sm:block text-left leading-tight">
-              <span className="block text-[10px] uppercase tracking-wider text-[#b9d8c5]">My basket</span>
-              <span className="font-extrabold text-xs">{formatBDT(hydrated ? total : 0)}</span>
+              <span className="block text-[11px] uppercase tracking-wider text-[#b9d8c5]">My basket</span>
+              <span className="font-extrabold text-[13px] tabular-nums">{formatBDT(hydrated ? total : 0)}</span>
             </span>
           </button>
         </div>
       </div>
 
-      {searchOpen && (
-        <div className="md:hidden border-t border-[#dfece3] px-4 py-3">
-          <HeaderSearch index={index} autoFocus onDone={() => setSearchOpen(false)} />
-        </div>
-      )}
+      <AnimatePresence initial={false}>
+        {searchOpen && (
+          <motion.div
+            key="msearch"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="md:hidden border-t border-[#dfece3]"
+          >
+            <div className="px-4 py-3">
+              <HeaderSearch index={index} autoFocus onDone={() => setSearchOpen(false)} />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Desktop category bar */}
       <nav className="hidden lg:block border-t border-[#eef5f0]" aria-label="Main">
@@ -122,8 +140,9 @@ export function HeaderClient({ categories, index }: Props) {
             >
               <LayoutGrid className="w-4 h-4" /> All categories <ChevronDown className={`w-4 h-4 transition-transform ${catsOpen ? 'rotate-180' : ''}`} />
             </button>
+            <AnimatePresence>
             {catsOpen && (
-              <div id="mega-menu" className="absolute left-0 top-full pt-2 z-50">
+              <motion.div id="mega-menu" {...popupMotion('bottom')} className="absolute left-0 top-full pt-2 z-50">
                 <div className="w-[min(60rem,calc(100vw-4rem))] rounded-3xl border border-[#dfece3] bg-white shadow-card">
                   <ul className="grid max-h-[min(70vh,36rem)] grid-cols-3 gap-x-4 gap-y-5 overflow-y-auto p-5 xl:grid-cols-4">
                     {categories.map((c) => (
@@ -170,8 +189,9 @@ export function HeaderClient({ categories, index }: Props) {
                     </Link>
                   </div>
                 </div>
-              </div>
+              </motion.div>
             )}
+            </AnimatePresence>
           </div>
           <Link href="/shop" className="hover:text-[#1a663b]">Shop all</Link>
           <Link href="/deals" className="hover:text-[#1a663b]">Deals &amp; offers</Link>
@@ -183,14 +203,8 @@ export function HeaderClient({ categories, index }: Props) {
       </nav>
 
       {/* Mobile drawer */}
-      {menuOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Menu">
-          <div className="absolute inset-0 bg-[#071a10]/60" onClick={() => setMenuOpen(false)} />
-          <div className="absolute inset-y-0 left-0 w-[85%] max-w-sm overflow-y-auto bg-white p-5 shadow-2xl">
-            <div className="flex items-center justify-between">
-              <span className="font-display text-xl font-bold text-[#112a1d]">Fresh<span className="text-[#1a663b]">Basket</span></span>
-              <button onClick={() => setMenuOpen(false)} aria-label="Close menu" className="grid place-items-center w-9 h-9 rounded-full hover:bg-[#f0f7f2] cursor-pointer"><X className="w-5 h-5" /></button>
-            </div>
+      <Drawer open={menuOpen} onOpenChange={setMenuOpen} side="left" title={<>Fresh<span className="text-[#1a663b]">Basket</span></>}>
+          <div>
             <div className="mt-5 grid grid-cols-2 gap-2 text-sm font-semibold">
               {[
                 ['/shop', 'Shop all'], ['/deals', 'Deals'], ['/track-order', 'Track order'], ['/wishlist', 'Wishlist'],
@@ -256,8 +270,7 @@ export function HeaderClient({ categories, index }: Props) {
               ))}
             </div>
           </div>
-        </div>
-      )}
+      </Drawer>
     </div>
   );
 }

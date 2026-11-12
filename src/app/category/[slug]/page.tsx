@@ -7,10 +7,9 @@ import { getCategories, getCategory, getCategoryNode, getCategoryPath, getCatego
 import type { CategoryNode, CategoryWithCount } from '@/types/store';
 import { SITE_URL } from '@/lib/constants';
 import { Breadcrumbs } from '@/components/ui/Breadcrumbs';
-import { Block } from '@/components/ui/Skeleton';
 import { JsonLd } from '@/components/product/JsonLd';
 import { ProductListing } from '@/components/shop/ProductListing';
-import { ListingSkeleton } from '@/components/shop/ListingSkeleton';
+import { CategoryHeroSkeleton, ListingSkeleton } from '@/components/store-ui/Skeletons';
 import { parseFilters, type RawSearchParams } from '@/components/shop/params';
 
 type Params = Promise<{ slug: string }>;
@@ -264,18 +263,4 @@ async function CategoryResults({ params, searchParams }: { params: Params; searc
   const category = await getCategory(slug);
   if (!category) notFound();
   return <ProductListing basePath={`/category/${category.id}`} filters={parseFilters(sp)} lockedCategory={category.id} />;
-}
-
-function CategoryHeroSkeleton() {
-  return (
-    <div>
-      <Block className="h-3 w-40" />
-      <Block className="mt-4 h-56 w-full rounded-[2rem] sm:h-64" />
-      <div className="mt-6 flex gap-2">
-        {Array.from({ length: 5 }, (_, i) => (
-          <Block key={i} className="h-10 w-32 rounded-full" />
-        ))}
-      </div>
-    </div>
-  );
 }

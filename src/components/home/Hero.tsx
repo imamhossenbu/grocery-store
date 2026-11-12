@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { ArrowRight, Banknote, Clock, Leaf, Search, ShieldCheck, Truck } from 'lucide-react';
+import { ArrowRight, Banknote, Clock, Leaf, ShieldCheck, Truck } from 'lucide-react';
+import { SearchBar } from '@/components/store-ui/SearchBar';
 import type { Category, Product } from '@/types/store';
 import { formatBDT } from '@/lib/format';
 import { FREE_DELIVERY_THRESHOLD, discountPercent } from '@/lib/pricing';
@@ -31,23 +32,7 @@ export function Hero({ categories, spotlight }: { categories: Category[]; spotli
             chosen slot. Pay cash when it arrives.
           </p>
 
-          <form action="/search" method="get" role="search" className="mt-8 flex max-w-xl items-center gap-2 rounded-full border border-[#cfe3d6] bg-white p-1.5 pl-5 shadow-card focus-within:border-[#1a663b]">
-            <Search className="h-5 w-5 shrink-0 text-[#7e9688]" aria-hidden />
-            <label htmlFor="hero-search" className="sr-only">
-              Search groceries
-            </label>
-            <input
-              id="hero-search"
-              name="q"
-              type="search"
-              required
-              placeholder="Search mango, hilsha, doi…"
-              className="min-w-0 flex-1 bg-transparent py-2 text-sm text-[#112a1d] outline-none placeholder:text-[#9ab5a5] sm:text-base"
-            />
-            <button type="submit" className="h-11 shrink-0 rounded-full bg-emerald-gradient px-5 text-sm font-bold text-white shadow-glow hover:brightness-105 cursor-pointer sm:px-7">
-              Search
-            </button>
-          </form>
+          <SearchBar id="hero-search" className="mt-8 max-w-xl" />
           <div className="mt-4 flex flex-wrap items-center gap-2 text-xs">
             <span className="font-semibold text-[#5a7165]">Popular:</span>
             {POPULAR_SEARCHES.map((t) => (

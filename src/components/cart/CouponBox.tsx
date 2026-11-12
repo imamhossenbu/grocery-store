@@ -2,6 +2,7 @@
 
 import { useId, useState, useTransition } from 'react';
 import { CheckCircle2, Loader2, Tag, X } from 'lucide-react';
+import { Input } from '@/components/ui/Field';
 import { useShop } from '@/context/ShopContext';
 import { validateCoupon } from '@/actions/orders';
 import { formatBDT } from '@/lib/format';
@@ -44,7 +45,7 @@ export function CouponBox({ coupons, compact = false }: { coupons: Coupon[]; com
   const shortfall = coupon ? coupon.minSubtotal - subtotal : 0;
 
   return (
-    <div className={compact ? '' : 'rounded-3xl border border-[#dfece3] bg-white p-5 shadow-soft'}>
+    <div className={compact ? '' : 'rounded-2xl border border-[#dfece3] bg-white p-5 shadow-soft'}>
       {!compact && (
         <h2 className="flex items-center gap-2 text-sm font-extrabold uppercase tracking-wider text-[#14522f]">
           <Tag className="h-4 w-4" aria-hidden /> Coupon
@@ -58,7 +59,7 @@ export function CouponBox({ coupons, compact = false }: { coupons: Coupon[]; com
               <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#1a663b]" aria-hidden />
               <span>
                 <strong className="font-extrabold text-[#112a1d]">{coupon.code}</strong>
-                <span className="block text-xs text-[#445c50]">{coupon.label}</span>
+                <span className="block text-[13px] text-[#3f5649]">{coupon.label}</span>
               </span>
             </p>
             <button
@@ -88,8 +89,9 @@ export function CouponBox({ coupons, compact = false }: { coupons: Coupon[]; com
             }}
           >
             <label htmlFor={inputId} className="sr-only">Coupon code</label>
-            <input
+            <Input
               id={inputId}
+              size="sm"
               value={code}
               onChange={(e) => {
                 setCode(e.target.value.toUpperCase());
@@ -100,25 +102,28 @@ export function CouponBox({ coupons, compact = false }: { coupons: Coupon[]; com
               autoCapitalize="characters"
               spellCheck={false}
               maxLength={30}
+              state={error ? 'error' : 'default'}
               aria-invalid={!!error}
               aria-describedby={error ? errorId : undefined}
-              className="min-w-0 flex-1 rounded-full border border-[#cfe3d6] bg-[#f9fbf9] px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-[#112a1d] placeholder:normal-case placeholder:font-normal placeholder:tracking-normal placeholder:text-[#8aa595] focus:border-[#1a663b] focus:outline-none focus:ring-2 focus:ring-[#1a663b]/20"
+              leadingIcon={<Tag />}
+              className="h-11 min-w-0 flex-1 rounded-full"
+              inputClassName="font-semibold uppercase tracking-wide placeholder:normal-case placeholder:font-normal placeholder:tracking-normal"
             />
             <button
               type="submit"
               disabled={isPending || cart.length === 0}
-              className="inline-flex items-center gap-1.5 rounded-full bg-[#0f2c1d] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#19442e] disabled:opacity-50 cursor-pointer"
+              className="fb-press inline-flex h-11 items-center gap-1.5 rounded-full bg-[#0f2c1d] px-5 text-sm font-bold text-white hover:bg-[#19442e] disabled:opacity-50 cursor-pointer"
             >
               {isPending && pendingCode === code.trim().toUpperCase() && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
               Apply
             </button>
           </form>
           {error && (
-            <p id={errorId} role="alert" className="mt-2 text-xs font-semibold text-red-600">{error}</p>
+            <p id={errorId} role="alert" className="mt-2 text-[13px] font-semibold text-red-700">{error}</p>
           )}
           {coupons.length > 0 && (
             <div className="mt-3">
-              <p className="text-xs font-semibold text-[#5a7165]">Available offers</p>
+              <p className="text-[13px] font-semibold text-[#3f5649]">Available offers</p>
               <ul className="mt-2 flex flex-wrap gap-2">
                 {coupons.map((c) => {
                   const locked = subtotal < c.minSubtotal;
@@ -128,20 +133,19 @@ export function CouponBox({ coupons, compact = false }: { coupons: Coupon[]; com
                         type="button"
                         onClick={() => apply(c.code)}
                         disabled={isPending || cart.length === 0}
-                        title={c.label}
+                        aria-label={`Apply ${c.code}: ${c.label}${locked ? ` (spend ${formatBDT(c.minSubtotal - subtotal)} more)` : ''}`}
                         className={`group inline-flex flex-col items-start rounded-2xl border border-dashed px-3 py-1.5 text-left transition cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 ${
                           locked
-                            ? 'border-[#d6e4db] bg-white text-[#5a7165] hover:border-[#9ab5a5]'
+                            ? 'border-[#d6e4db] bg-white text-[#3f5649] hover:border-[#8fb3a0]'
                             : 'border-[#1a663b]/50 bg-[#f0f9f3] text-[#14522f] hover:border-[#1a663b] hover:bg-[#e3f5ea]'
                         }`}
                       >
-                        <span className="flex items-center gap-1.5 text-xs font-extrabold tracking-wide">
+                        <span className="flex items-center gap-1.5 text-[13px] font-extrabold tracking-wide">
                           {isPending && pendingCode === c.code ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden /> : <Tag className="h-3 w-3" aria-hidden />}
                           {c.code}
                         </span>
-                        <span className="text-[11px] leading-tight">
-                          {locked ? `Spend ${formatBDT(c.minSubtotal - subtotal)} more` : c.label}
-                        </span>
+                        <span className="text-[13px] leading-tight">{c.label}</span>
+                        {locked && <span className="text-xs font-semibold text-amber-800">Spend {formatBDT(c.minSubtotal - subtotal)} more</span>}
                       </button>
                     </li>
                   );

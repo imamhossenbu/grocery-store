@@ -3,10 +3,9 @@ import { getCategories, getCategoryTree, queryProducts } from '@/lib/data/catalo
 import type { CategoryNode } from '@/types/store';
 import { ProductGrid } from '@/components/product/ProductCard';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { PRODUCTS_PER_PAGE } from '@/lib/constants';
 import { ActiveFilters } from './ActiveFilters';
 import { FilterPanel, type FilterCategory } from './FilterPanel';
-import { ListingProvider, PendingArea } from './ListingProvider';
+import { ListingProvider, PendingArea, PendingBar } from './ListingProvider';
 import { MobileFilters } from './MobileFilters';
 import { Pagination } from './Pagination';
 import { SortSelect } from './SortSelect';
@@ -36,7 +35,7 @@ export async function ProductListing({ basePath, filters: raw, lockedCategory, s
       inStock: filters.inStock,
       onSale: filters.onSale,
       page: filters.page,
-      perPage: PRODUCTS_PER_PAGE,
+      perPage: filters.perPage,
     }),
     getCategories(),
     getCategoryTree(),
@@ -64,44 +63,58 @@ export async function ProductListing({ basePath, filters: raw, lockedCategory, s
       : { categories: filterCats }),
   };
   const activeCount = activeFilterCount(filters, lockedCategory);
-  const from = total ? (page - 1) * PRODUCTS_PER_PAGE + 1 : 0;
-  const to = Math.min(page * PRODUCTS_PER_PAGE, total);
+  const from = total ? (page - 1) * filters.perPage + 1 : 0;
+  const to = Math.min(page * filters.perPage, total);
 
-  const clearHref = listingHref(basePath, { sort: filters.sort, page: 1, inStock: false, onSale: false, q: searchMode ? filters.q : undefined });
+  const clearHref = listingHref(basePath, {
+    sort: filters.sort,
+    perPage: filters.perPage,
+    page: 1,
+    inStock: false,
+    onSale: false,
+    q: searchMode ? filters.q : undefined,
+  });
 
   return (
     <ListingProvider>
       <div className="lg:grid lg:grid-cols-[280px_minmax(0,1fr)] lg:gap-8">
         <aside className="hidden lg:block" aria-label="Filters">
-          <div className="fb-scroll sticky top-44 max-h-[calc(100vh-12rem)] overflow-y-auto overscroll-contain rounded-2xl border border-[#dfece3] bg-white p-4 shadow-soft [scrollbar-gutter:stable]">
+          <div className="fb-scroll sticky top-44 max-h-[calc(100vh-12rem)] overflow-y-auto overflow-x-hidden overscroll-contain rounded-2xl border border-[#dfece3] bg-white p-4 shadow-soft [scrollbar-gutter:stable]">
             <FilterPanel {...panel} idPrefix="d" />
           </div>
         </aside>
 
         <section aria-labelledby="results-heading" className="min-w-0">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p id="results-heading" className="text-sm text-[#5a7165]" aria-live="polite">
+          <div id="results-top" className="flex scroll-mt-44 flex-wrap items-center justify-between gap-3">
+            <p id="results-heading" className="text-sm text-[#3f5649]" aria-live="polite">
               {total > 0 ? (
                 <>
-                  Showing <strong className="text-[#112a1d]">{from}–{to}</strong> of{' '}
-                  <strong className="text-[#112a1d]">{total}</strong> {total === 1 ? 'product' : 'products'}
+                  Showing{' '}
+                  <strong className="font-semibold tabular-nums text-[#112a1d]">
+                    {from}–{to}
+                  </strong>{' '}
+                  of <strong className="font-semibold tabular-nums text-[#112a1d]">{total}</strong> {total === 1 ? 'product' : 'products'}
                 </>
               ) : (
                 'No products found'
               )}
             </p>
             <div className="flex items-center gap-2">
-              <MobileFilters {...panel} activeCount={activeCount} total={total} />
+              <MobileFilters {...panel} activeCount={activeCount} total={total} clearHref={clearHref} />
               <SortSelect basePath={basePath} filters={filters} />
             </div>
           </div>
 
-          <div className="mt-4">
+          <div className="mt-3">
             <ActiveFilters basePath={basePath} filters={filters} categoryNames={categoryNames} lockedCategory={lockedCategory} keepQuery={searchMode} />
           </div>
 
-          <div className="mt-6">
-            <PendingArea>
+          <div className="mt-3">
+            <PendingBar />
+          </div>
+
+          <div className="mt-3">
+            <PendingArea skeletonCount={items.length || 4}>
               {items.length > 0 ? (
                 <ProductGrid products={items} priorityCount={4} />
               ) : activeCount === 0 && emptyFallback ? (
@@ -118,7 +131,7 @@ export async function ProductListing({ basePath, filters: raw, lockedCategory, s
             </PendingArea>
           </div>
 
-          <Pagination basePath={basePath} filters={filters} page={page} pageCount={pageCount} />
+          <Pagination basePath={basePath} filters={filters} page={page} pageCount={pageCount} total={total} />
         </section>
       </div>
     </ListingProvider>

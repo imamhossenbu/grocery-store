@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Heart, Minus, Plus, Share2, ShoppingBasket, Zap } from 'lucide-react';
+import { Heart, Share2, ShoppingBasket, Zap } from 'lucide-react';
+import { QuantityStepper } from '@/components/ui/Field';
 import type { Product } from '@/types/store';
 import { useShop } from '@/context/ShopContext';
 
@@ -40,33 +41,17 @@ export function ProductPurchasePanel({ product }: { product: Product }) {
     <div className="space-y-4">
       {!out && (
         <div className="flex flex-wrap items-center gap-3">
-          <span id="qty-label" className="text-sm font-semibold text-[#234835]">
+          <span className="text-sm font-semibold text-[#234835]" aria-hidden>
             Quantity
           </span>
-          <div role="group" aria-labelledby="qty-label" className="flex h-12 items-center rounded-full border border-[#cfe3d6] bg-white p-1">
-            <button
-              type="button"
-              onClick={() => setQty(Math.max(1, q - 1))}
-              disabled={q <= 1}
-              aria-label="Decrease quantity"
-              className="grid h-10 w-10 place-items-center rounded-full text-[#112a1d] transition hover:bg-[#e8f5ee] disabled:opacity-40 cursor-pointer"
-            >
-              <Minus className="h-4 w-4" />
-            </button>
-            <output aria-live="polite" className="w-10 text-center text-base font-extrabold text-[#112a1d]">
-              {q}
-            </output>
-            <button
-              type="button"
-              onClick={() => setQty(Math.min(maxQty, q + 1))}
-              disabled={q >= maxQty}
-              aria-label="Increase quantity"
-              className="grid h-10 w-10 place-items-center rounded-full text-[#112a1d] transition hover:bg-[#e8f5ee] disabled:opacity-40 cursor-pointer"
-            >
-              <Plus className="h-4 w-4" />
-            </button>
-          </div>
-          {inCart > 0 && <span className="text-xs font-semibold text-[#1a663b]">{inCart} already in your basket</span>}
+          <QuantityStepper
+            label={`Quantity of ${product.name}`}
+            value={q}
+            min={1}
+            max={Math.max(1, maxQty)}
+            onValueChange={setQty}
+          />
+          {inCart > 0 && <span className="text-[13px] font-semibold text-[#1a663b]">{inCart} already in your basket</span>}
         </div>
       )}
 
@@ -78,8 +63,8 @@ export function ProductPurchasePanel({ product }: { product: Product }) {
             addToCart(product, q);
             setQty(1);
           }}
-          className={`inline-flex h-12 items-center justify-center gap-2 rounded-full text-sm font-bold transition active:scale-[0.98] disabled:cursor-not-allowed cursor-pointer ${
-            out || maxQty <= 0 ? 'bg-[#eef3f0] text-[#7e9688]' : 'bg-emerald-gradient text-white shadow-glow hover:brightness-105'
+          className={`fb-press inline-flex h-12 items-center justify-center gap-2 rounded-full text-sm font-bold transition active:scale-[0.98] disabled:cursor-not-allowed cursor-pointer ${
+            out || maxQty <= 0 ? 'bg-[#eef3f0] text-[#3f5649]' : 'bg-emerald-gradient text-white shadow-glow hover:brightness-105'
           }`}
         >
           <ShoppingBasket className="h-4.5 w-4.5" />

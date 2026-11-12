@@ -1,10 +1,10 @@
 import { Suspense } from 'react';
-import { BadgeCheck, MessageSquareText } from 'lucide-react';
+import { MessageSquareText } from 'lucide-react';
 import type { Product, Review } from '@/types/store';
-import { formatDate } from '@/lib/format';
-import { Block } from '@/components/ui/Skeleton';
+import { ReviewFormSkeleton } from '@/components/store-ui/Skeletons';
 import { Stars } from './Stars';
 import { ReviewFormGate } from './ReviewFormGate';
+import { ReviewList } from './ReviewList';
 
 export function reviewStats(product: Product, reviews: Review[]) {
   const count = Math.max(product.reviewCount ?? 0, reviews.length);
@@ -29,14 +29,14 @@ export function ReviewsSection({ product, reviews }: { product: Product; reviews
 
       <div className="mt-6 grid gap-8 lg:grid-cols-[340px_minmax(0,1fr)]">
         <div className="space-y-6">
-          <div className="rounded-3xl border border-[#dfece3] bg-white p-6 shadow-soft">
+          <div className="rounded-2xl border border-[#dfece3] bg-white p-6 shadow-soft">
             {count > 0 ? (
               <>
                 <div className="flex items-end gap-3">
-                  <span className="font-display text-5xl font-bold text-[#112a1d]">{average.toFixed(1)}</span>
+                  <span className="font-display text-5xl font-bold tabular-nums text-[#112a1d]">{average.toFixed(1)}</span>
                   <div className="pb-1.5">
                     <Stars rating={average} size="md" />
-                    <p className="mt-0.5 text-xs text-[#5a7165]">
+                    <p className="mt-0.5 text-[13px] text-[#3f5649]">
                       Based on {count} {count === 1 ? 'review' : 'reviews'}
                     </p>
                   </div>
@@ -45,8 +45,8 @@ export function ReviewsSection({ product, reviews }: { product: Product; reviews
                   {dist.map(({ star, n }) => {
                     const pct = sample ? Math.round((n / sample) * 100) : 0;
                     return (
-                      <li key={star} className="flex items-center gap-3 text-xs">
-                        <span className="w-10 shrink-0 font-semibold text-[#234835]">{star} star</span>
+                      <li key={star} className="flex items-center gap-3 text-[13px]">
+                        <span className="w-12 shrink-0 font-semibold text-[#234835]">{star} star</span>
                         <span
                           className="h-2.5 flex-1 overflow-hidden rounded-full bg-[#eef5f0]"
                           role="progressbar"
@@ -55,9 +55,9 @@ export function ReviewsSection({ product, reviews }: { product: Product; reviews
                           aria-valuemax={100}
                           aria-label={`${star} star reviews`}
                         >
-                          <span className="block h-full rounded-full bg-[#f5b82e]" style={{ width: `${pct}%` }} />
+                          <span className="fb-grow-x block h-full origin-left rounded-full bg-[#f5b82e]" style={{ width: `${pct}%`, ['--fb-i' as string]: 5 - star }} />
                         </span>
-                        <span className="w-9 shrink-0 text-right font-semibold text-[#5a7165]">{pct}%</span>
+                        <span className="w-10 shrink-0 text-right font-semibold tabular-nums text-[#3f5649]">{pct}%</span>
                       </li>
                     );
                   })}
@@ -72,52 +72,16 @@ export function ReviewsSection({ product, reviews }: { product: Product; reviews
             )}
           </div>
 
-          <Suspense
-            fallback={
-              <div className="space-y-3 rounded-3xl border border-[#dfece3] bg-white p-6">
-                <Block className="h-5 w-40" />
-                <Block className="h-8 w-48" />
-                <Block className="h-24 w-full" />
-                <Block className="h-11 w-36 rounded-full" />
-              </div>
-            }
-          >
+          <Suspense fallback={<ReviewFormSkeleton />}>
             <ReviewFormGate productId={product.id} />
           </Suspense>
         </div>
 
         <div>
           {reviews.length > 0 ? (
-            <ul className="divide-y divide-[#e6f0e9] rounded-3xl border border-[#dfece3] bg-white px-6 shadow-soft">
-              {reviews.map((r) => (
-                <li key={r.id} className="py-5">
-                  <article>
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="flex items-center gap-3">
-                        <span className="grid h-10 w-10 place-items-center rounded-full bg-emerald-gradient text-sm font-bold text-white" aria-hidden>
-                          {r.authorName.charAt(0).toUpperCase()}
-                        </span>
-                        <div>
-                          <p className="text-sm font-bold text-[#112a1d]">{r.authorName}</p>
-                          <p className="text-xs text-[#7e9688]">
-                            <time dateTime={r.createdAt}>{formatDate(r.createdAt)}</time>
-                          </p>
-                        </div>
-                      </div>
-                      {r.verifiedPurchase && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-[#e8f5ee] px-2.5 py-1 text-[11px] font-bold text-[#14522f]">
-                          <BadgeCheck className="h-3.5 w-3.5" /> Verified purchase
-                        </span>
-                      )}
-                    </div>
-                    <Stars rating={r.rating} size="sm" className="mt-3" />
-                    <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-[#234835]">{r.comment}</p>
-                  </article>
-                </li>
-              ))}
-            </ul>
+            <ReviewList reviews={reviews} />
           ) : (
-            <div className="grid h-full min-h-48 place-items-center rounded-3xl border-2 border-dashed border-[#cfe3d6] bg-white/70 p-8 text-center">
+            <div className="grid h-full min-h-48 place-items-center rounded-2xl border-2 border-dashed border-[#cfe3d6] bg-white/70 p-8 text-center">
               <p className="max-w-sm text-sm text-[#5a7165]">
                 Reviews from shoppers appear here. Bought this before? Your honest feedback helps families across Dhaka shop with confidence.
               </p>

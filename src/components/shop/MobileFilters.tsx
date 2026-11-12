@@ -1,9 +1,11 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { SlidersHorizontal, X } from 'lucide-react';
+import { useState } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
+import { SlidersHorizontal } from 'lucide-react';
+import { BottomSheet } from '@/components/store-ui/BottomSheet';
 import { FilterPanel, type FilterCategory } from './FilterPanel';
-import { useListing } from './ListingProvider';
+import { FilterLink, useListing } from './ListingProvider';
 import type { ListingFilters } from './params';
 
 interface Props {
@@ -14,77 +16,80 @@ interface Props {
   categoryLinks?: { categories: FilterCategory[]; current: string };
   activeCount: number;
   total: number;
+  clearHref: string;
 }
 
-/** Bottom sheet with the same filter form, for small screens. */
-export function MobileFilters({ activeCount, total, ...panel }: Props) {
+/**
+ * Small screens: a "Filters" button that opens the same filter form in a
+ * bottom sheet. Changes apply live behind the sheet; the sticky footer shows
+ * the up-to-date result count.
+ */
+export function MobileFilters({ activeCount, total, clearHref, ...panel }: Props) {
   const [open, setOpen] = useState(false);
   const { pending } = useListing();
-  const closeRef = useRef<HTMLButtonElement>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const trigger = triggerRef.current;
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
-    document.addEventListener('keydown', onKey);
-    document.body.style.overflow = 'hidden';
-    closeRef.current?.focus();
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      document.body.style.overflow = '';
-      trigger?.focus();
-    };
-  }, [open]);
+  const label = `${total} ${total === 1 ? 'product' : 'products'}`;
 
   return (
     <>
       <button
-        ref={triggerRef}
         type="button"
         onClick={() => setOpen(true)}
         aria-haspopup="dialog"
         aria-expanded={open}
-        className="inline-flex h-10 items-center gap-2 rounded-full border border-[#cfe3d6] bg-white px-4 text-sm font-semibold text-[#112a1d] shadow-sm hover:border-[#1a663b] cursor-pointer lg:hidden"
+        className="fb-press inline-flex h-10 items-center gap-2 rounded-full border border-[#cfe0d6] bg-white px-4 text-sm font-semibold text-[#112a1d] shadow-sm hover:border-[#1a663b] cursor-pointer lg:hidden"
       >
-        <SlidersHorizontal className="h-4 w-4 text-[#1a663b]" />
+        <SlidersHorizontal className="h-4 w-4 text-[#1a663b]" aria-hidden />
         Filters
-        {activeCount > 0 && (
-          <span className="grid h-5 min-w-5 place-items-center rounded-full bg-[#1a663b] px-1 text-[11px] font-bold text-white">{activeCount}</span>
-        )}
+        <AnimatePresence initial={false}>
+          {activeCount > 0 && (
+            <motion.span
+              key={activeCount}
+              initial={{ scale: 0.5, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.5, opacity: 0 }}
+              className="grid h-5 min-w-5 place-items-center rounded-full bg-[#1a663b] px-1 text-xs font-bold tabular-nums text-white"
+            >
+              {activeCount}
+            </motion.span>
+          )}
+        </AnimatePresence>
       </button>
 
-      {open && (
-        <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-labelledby="mobile-filters-title">
-          <div className="absolute inset-0 bg-[#071a10]/60 backdrop-blur-sm animate-fadeIn" onClick={() => setOpen(false)} />
-          <div className="absolute inset-x-0 bottom-0 flex max-h-[88vh] flex-col rounded-t-[2rem] bg-white shadow-2xl animate-slideIn">
-            <div className="flex items-center justify-between border-b border-[#e6f0e9] px-5 py-4">
-              <h2 id="mobile-filters-title" className="font-display text-xl font-bold text-[#112a1d]">Filter products</h2>
-              <button
-                ref={closeRef}
-                type="button"
-                onClick={() => setOpen(false)}
-                aria-label="Close filters"
-                className="grid h-10 w-10 place-items-center rounded-full text-[#5a7165] hover:bg-[#f0f7f2] cursor-pointer"
+      <BottomSheet
+        open={open}
+        onOpenChange={setOpen}
+        title="Filter products"
+        className="lg:hidden"
+        headerAction={
+          activeCount > 0 ? (
+            <FilterLink href={clearHref} className="rounded-full px-3 py-2 text-sm font-bold text-[#1a663b] hover:bg-[#eef6f1]">
+              Clear all
+            </FilterLink>
+          ) : null
+        }
+        footer={
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            className="fb-press relative inline-flex h-12 w-full items-center justify-center gap-2 overflow-hidden rounded-full bg-emerald-gradient text-[15px] font-bold text-white shadow-glow cursor-pointer"
+          >
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.span
+                key={pending ? 'pending' : label}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.15 }}
+                className="tabular-nums"
               >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto px-5 py-5">
-              <FilterPanel {...panel} idPrefix="m" />
-            </div>
-            <div className="border-t border-[#e6f0e9] p-4">
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className="h-12 w-full rounded-full bg-emerald-gradient text-sm font-bold text-white shadow-glow cursor-pointer"
-              >
-                {pending ? 'Updating…' : `Show ${total} ${total === 1 ? 'product' : 'products'}`}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+                {pending ? 'Updating results…' : total === 0 ? 'No matches — adjust filters' : `Show ${label}`}
+              </motion.span>
+            </AnimatePresence>
+          </button>
+        }
+      >
+        <FilterPanel {...panel} idPrefix="m" />
+      </BottomSheet>
     </>
   );
 }
