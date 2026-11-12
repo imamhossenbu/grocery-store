@@ -320,3 +320,4 @@ export function CheckoutModal({
     </Modal>
   );
 }
+

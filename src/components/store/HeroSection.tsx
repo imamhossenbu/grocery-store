@@ -128,3 +128,4 @@ export function HeroSection({ onShopClick, onDealsClick }: HeroSectionProps) {
     </section>
   );
 }
+

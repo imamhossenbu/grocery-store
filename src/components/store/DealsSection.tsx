@@ -97,3 +97,4 @@ export function DealsSection({ onShopCategory, onApplyPromo }: DealsSectionProps
     </section>
   );
 }
+

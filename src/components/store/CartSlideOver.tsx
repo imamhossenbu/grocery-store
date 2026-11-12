@@ -287,3 +287,4 @@ export function CartSlideOver() {
     </div>
   );
 }
+
