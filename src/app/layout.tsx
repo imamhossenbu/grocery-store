@@ -1,42 +1,49 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
+import { Fraunces, Plus_Jakarta_Sans } from 'next/font/google';
 import './globals.css';
-import { StoreProvider } from '@/context/StoreContext';
+import { ShopProvider } from '@/context/ShopContext';
+import { Header } from '@/components/layout/Header';
+import { Footer } from '@/components/layout/Footer';
+import { CartDrawer } from '@/components/cart/CartDrawer';
+import { Toaster } from '@/components/layout/Toaster';
+import { DatabaseNotice } from '@/components/layout/DatabaseNotice';
+import { SITE_NAME, SITE_URL } from '@/lib/constants';
+
+const jakarta = Plus_Jakarta_Sans({ subsets: ['latin'], variable: '--font-jakarta', display: 'swap' });
+const fraunces = Fraunces({ subsets: ['latin'], variable: '--font-fraunces', display: 'swap' });
 
 export const metadata: Metadata = {
-  title: 'FreshBasket — Fresh Groceries & Organic Food Delivery in Bangladesh',
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: `${SITE_NAME} — Fresh Groceries & Organic Food Delivery in Dhaka`,
+    template: `%s | ${SITE_NAME}`,
+  },
   description:
-    'Shop fresh fruits, crisp vegetables, farm milk, sweet Bogura doi, and organic foods with 100% Cash on Delivery across Dhaka.',
-  keywords: [
-    'grocery',
-    'fresh grocery bangladesh',
-    'organic food dhaka',
-    'cash on delivery grocery',
-    'himsagar mango',
-    'farm fresh milk',
-  ],
+    'Shop fresh fruits, vegetables, farm milk, Bogura doi, fish, meat and organic foods with same-day delivery and cash on delivery across Dhaka.',
+  keywords: ['online grocery dhaka', 'fresh grocery bangladesh', 'organic food dhaka', 'cash on delivery grocery'],
+  openGraph: { type: 'website', siteName: SITE_NAME, locale: 'en_BD' },
+  twitter: { card: 'summary_large_image' },
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export const viewport: Viewport = {
+  themeColor: '#1a663b',
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="h-full antialiased">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link
-          rel="preconnect"
-          href="https://fonts.gstatic.com"
-          crossOrigin="anonymous"
-        />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700;9..144,800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
-          rel="stylesheet"
-        />
-      </head>
-      <body className="min-h-full flex flex-col font-sans">
-        <StoreProvider>{children}</StoreProvider>
+    <html lang="en" className={`h-full antialiased ${jakarta.variable} ${fraunces.variable}`}>
+      <body className="min-h-full flex flex-col font-sans bg-[#f9fbf9] text-[#112a1d]">
+        <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[70] focus:rounded-full focus:bg-white focus:px-4 focus:py-2 focus:shadow-card">
+          Skip to content
+        </a>
+        <ShopProvider>
+          <DatabaseNotice />
+          <Header />
+          <main id="main" className="flex-1">{children}</main>
+          <Footer />
+          <CartDrawer />
+          <Toaster />
+        </ShopProvider>
       </body>
     </html>
   );
