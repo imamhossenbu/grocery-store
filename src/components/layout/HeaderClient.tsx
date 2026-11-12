@@ -2,7 +2,8 @@
 
 import { useRef, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, ChevronDown, Heart, LayoutGrid, Leaf, Menu, PackageSearch, Search, ShoppingBasket, User, X } from 'lucide-react';
+import { ArrowRight, ChevronDown, Heart, LayoutGrid, Leaf, Menu, PackageSearch, Search, ShoppingBasket, X } from 'lucide-react';
+import { HeaderAccount } from './HeaderAccount';
 import { useShop } from '@/context/ShopContext';
 import { formatBDT } from '@/lib/format';
 import { HeaderSearch, type SearchIndex } from './HeaderSearch';
@@ -69,9 +70,7 @@ export function HeaderClient({ categories, index }: Props) {
               <span className="absolute top-0.5 right-0.5 min-w-[18px] h-[18px] rounded-full bg-red-500 text-white text-[10px] font-extrabold grid place-items-center px-1">{wishlist.length}</span>
             )}
           </Link>
-          <Link href="/account" className="grid place-items-center w-10 h-10 rounded-full text-[#1a663b] hover:bg-[#f0f7f2]" title="My account" aria-label="My account">
-            <User className="w-5 h-5" />
-          </Link>
+          <HeaderAccount />
           <button
             onClick={() => setCartOpen(true)}
             className="relative ml-1 inline-flex items-center gap-2.5 rounded-full bg-[#0f2c1d] hover:bg-[#18432d] text-white pl-3.5 pr-3.5 sm:pr-5 py-2.5 shadow-md transition cursor-pointer"
