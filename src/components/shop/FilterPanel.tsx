@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useRef } from 'react';
-import { Check, SlidersHorizontal } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { Check, ChevronRight, SlidersHorizontal } from 'lucide-react';
 import { formatBDT } from '@/lib/format';
 import { FilterLink, useListing } from './ListingProvider';
 import { listingHref, parseFilters, pricePresets, type ListingFilters } from './params';
@@ -10,16 +10,18 @@ import { listingHref, parseFilters, pricePresets, type ListingFilters } from './
 export interface FilterCategory {
   id: string;
   name: string;
+  /** Products in this category and all its subcategories. */
   productCount: number;
+  children?: FilterCategory[];
 }
 
 interface Props {
   basePath: string;
   filters: ListingFilters;
   priceRange: { min: number; max: number };
-  /** Category radio list (shop/search). Omit on a category page. */
+  /** Category radio tree (shop/search). Omit on a category page. */
   categories?: FilterCategory[];
-  /** Category page: links to the other category pages instead of radios. */
+  /** Category page: a tree of links to the category pages instead of radios. */
   categoryLinks?: { categories: FilterCategory[]; current: string };
   /** Called after any change is applied (closes the mobile sheet). */
   onApplied?: () => void;
@@ -69,37 +71,22 @@ export function FilterPanel({ basePath, filters, priceRange, categories, categor
       {categories && (
         <fieldset>
           <legend className={heading}>Category</legend>
-          <div className="mt-3 space-y-1">
-            {[{ id: '', name: 'All categories', productCount: categories.reduce((s, c) => s + c.productCount, 0) }, ...categories].map((c) => {
-              const checked = (filters.category ?? '') === c.id;
-              return (
-                <label
-                  key={c.id || 'all'}
-                  className={`flex cursor-pointer items-center justify-between gap-2 rounded-xl px-3 py-2 text-sm transition has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[#1a663b] ${
-                    checked ? 'bg-[#e8f5ee] font-bold text-[#14522f]' : 'text-[#234835] hover:bg-[#f0f7f2]'
-                  }`}
-                >
-                  <span className="flex items-center gap-2.5">
-                    <input
-                      type="radio"
-                      name="category"
-                      value={c.id}
-                      defaultChecked={checked}
-                      onChange={apply}
-                      className="sr-only"
-                    />
-                    <span
-                      aria-hidden
-                      className={`grid h-4 w-4 place-items-center rounded-full border-2 ${checked ? 'border-[#1a663b] bg-[#1a663b]' : 'border-[#b9d8c5] bg-white'}`}
-                    >
-                      {checked && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
-                    </span>
-                    {c.name}
-                  </span>
-                  <span className="text-xs font-semibold text-[#7e9688]">{c.productCount}</span>
-                </label>
-              );
-            })}
+          <div className="mt-3 space-y-0.5">
+            <CategoryOption
+              id=""
+              name="All categories"
+              count={categories.reduce((n, c) => n + c.productCount, 0)}
+              checked={!filters.category}
+              onChange={apply}
+            />
+            <CategoryTree
+              nodes={categories}
+              active={filters.category}
+              idPrefix={`${idPrefix}-cat`}
+              render={(c, depth) => (
+                <CategoryOption id={c.id} name={c.name} count={c.productCount} depth={depth} checked={filters.category === c.id} onChange={apply} />
+              )}
+            />
           </div>
         </fieldset>
       )}
@@ -107,30 +94,31 @@ export function FilterPanel({ basePath, filters, priceRange, categories, categor
       {categoryLinks && (
         <nav aria-label="Categories">
           <h3 className={heading}>Category</h3>
-          <ul className="mt-3 space-y-1">
-            <li>
-              <Link href="/shop" className="flex items-center justify-between rounded-xl px-3 py-2 text-sm text-[#234835] hover:bg-[#f0f7f2]">
-                All products
-              </Link>
-            </li>
-            {categoryLinks.categories.map((c) => {
-              const on = c.id === categoryLinks.current;
-              return (
-                <li key={c.id}>
+          <div className="mt-3 space-y-0.5">
+            <Link href="/shop" className="flex items-center justify-between rounded-xl px-3 py-2 text-sm text-[#234835] hover:bg-[#f0f7f2]">
+              All products
+            </Link>
+            <CategoryTree
+              nodes={categoryLinks.categories}
+              active={categoryLinks.current}
+              idPrefix={`${idPrefix}-catl`}
+              render={(c, depth) => {
+                const on = c.id === categoryLinks.current;
+                return (
                   <Link
                     href={`/category/${c.id}`}
                     aria-current={on ? 'page' : undefined}
-                    className={`flex items-center justify-between rounded-xl px-3 py-2 text-sm transition ${
+                    className={`flex min-w-0 flex-1 items-center justify-between gap-2 rounded-xl py-2 pr-3 text-sm transition ${
                       on ? 'bg-[#e8f5ee] font-bold text-[#14522f]' : 'text-[#234835] hover:bg-[#f0f7f2]'
-                    }`}
+                    } pl-3 ${depth === 0 && !on ? 'font-semibold' : ''}`}
                   >
-                    {c.name}
+                    <span className="truncate">{c.name}</span>
                     <span className="text-xs font-semibold text-[#7e9688]">{c.productCount}</span>
                   </Link>
-                </li>
-              );
-            })}
-          </ul>
+                );
+              }}
+            />
+          </div>
         </nav>
       )}
 
@@ -230,5 +218,114 @@ export function FilterPanel({ basePath, filters, priceRange, categories, categor
         <SlidersHorizontal className="h-4 w-4" /> Apply filters
       </button>
     </form>
+  );
+}
+
+/** Ids of `active` and its ancestors in `nodes` (empty when not found). */
+function branchOf(nodes: FilterCategory[], active: string | undefined): string[] {
+  if (!active) return [];
+  for (const n of nodes) {
+    if (n.id === active) return [n.id];
+    const sub = branchOf(n.children ?? [], active);
+    if (sub.length) return [n.id, ...sub];
+  }
+  return [];
+}
+
+/**
+ * Collapsible category tree. Parents get a disclosure button; the branch that
+ * holds the active category starts expanded.
+ */
+function CategoryTree({
+  nodes,
+  active,
+  idPrefix,
+  render,
+}: {
+  nodes: FilterCategory[];
+  active?: string;
+  idPrefix: string;
+  render: (c: FilterCategory, depth: number) => React.ReactNode;
+}) {
+  const [open, setOpen] = useState<Set<string>>(() => new Set(branchOf(nodes, active)));
+  const toggle = (id: string) =>
+    setOpen((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const level = (list: FilterCategory[], depth: number): React.ReactNode => (
+    <ul className={depth ? 'ml-4 mt-0.5 space-y-0.5 border-l-2 border-[#e3efe7] pl-2' : 'space-y-0.5'}>
+      {list.map((c) => {
+        const hasKids = (c.children?.length ?? 0) > 0;
+        const expanded = hasKids && open.has(c.id);
+        const listId = `${idPrefix}-${c.id}`;
+        return (
+          <li key={c.id}>
+            <div className="flex items-center gap-1">
+              {render(c, depth)}
+              {hasKids && (
+                <button
+                  type="button"
+                  onClick={() => toggle(c.id)}
+                  aria-expanded={expanded}
+                  aria-controls={listId}
+                  aria-label={`${expanded ? 'Collapse' : 'Expand'} ${c.name}`}
+                  className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[#5a7165] transition hover:bg-[#f0f7f2] hover:text-[#1a663b] focus-visible:outline-2 focus-visible:outline-[#1a663b] cursor-pointer"
+                >
+                  <ChevronRight className={`h-4 w-4 transition-transform ${expanded ? 'rotate-90' : ''}`} aria-hidden />
+                </button>
+              )}
+            </div>
+            {hasKids && (
+              <div id={listId} hidden={!expanded}>
+                {/* Always rendered (just hidden) so a checked radio inside stays in the form. */}
+                {level(c.children!, depth + 1)}
+              </div>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+
+  return level(nodes, 0);
+}
+
+function CategoryOption({
+  id,
+  name,
+  count,
+  checked,
+  depth = 0,
+  onChange,
+}: {
+  id: string;
+  name: string;
+  count: number;
+  checked: boolean;
+  depth?: number;
+  onChange: () => void;
+}) {
+  return (
+    <label
+      className={`flex min-w-0 flex-1 cursor-pointer items-center justify-between gap-2 rounded-xl px-3 py-2 text-sm transition has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[#1a663b] ${
+        checked ? 'bg-[#e8f5ee] font-bold text-[#14522f]' : 'text-[#234835] hover:bg-[#f0f7f2]'
+      } ${depth === 0 && id && !checked ? 'font-semibold' : ''}`}
+    >
+      <span className="flex min-w-0 items-center gap-2.5">
+        <input type="radio" name="category" value={id} defaultChecked={checked} onChange={onChange} className="sr-only" />
+        <span
+          aria-hidden
+          className={`grid h-4 w-4 shrink-0 place-items-center rounded-full border-2 ${checked ? 'border-[#1a663b] bg-[#1a663b]' : 'border-[#b9d8c5] bg-white'}`}
+        >
+          {checked && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
+        </span>
+        <span className="truncate">{name}</span>
+      </span>
+      <span className="text-xs font-semibold text-[#7e9688]">{count}</span>
+    </label>
   );
 }

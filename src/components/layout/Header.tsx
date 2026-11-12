@@ -1,11 +1,12 @@
 import { MapPin, Sparkles, Truck } from 'lucide-react';
-import { getCategories, getSearchIndex } from '@/lib/data/catalog';
+import { getCategoryTree, getSearchIndex } from '@/lib/data/catalog';
+import type { CategoryNode } from '@/types/store';
 import { FREE_DELIVERY_THRESHOLD } from '@/lib/pricing';
 import { formatBDT } from '@/lib/format';
-import { HeaderClient } from './HeaderClient';
+import { HeaderClient, type HeaderCategory } from './HeaderClient';
 
 export async function Header() {
-  const [categories, index] = await Promise.all([getCategories(), getSearchIndex()]);
+  const [tree, index] = await Promise.all([getCategoryTree(), getSearchIndex()]);
   return (
     <header className="sticky top-0 z-40 w-full">
       <div className="bg-[#0f2c1d] text-[#ecfdf5] text-xs py-2 px-4">
@@ -21,9 +22,13 @@ export async function Header() {
         </div>
       </div>
       <HeaderClient
-        categories={categories.map(({ id, name, image, productCount }) => ({ id, name, image, productCount }))}
+        categories={tree.map(toHeaderCategory)}
         index={index}
       />
     </header>
   );
+}
+
+function toHeaderCategory({ id, name, image, productCount, children }: CategoryNode): HeaderCategory {
+  return { id, name, image, productCount, children: children.map(toHeaderCategory) };
 }

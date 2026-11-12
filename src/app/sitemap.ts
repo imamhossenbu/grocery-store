@@ -19,10 +19,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   return [
     ...pages,
+    // Every category, top-level and subcategories.
     ...categories.map((c) => ({
       url: `${SITE_URL}/category/${c.id}`,
       changeFrequency: 'daily' as const,
-      priority: 0.8,
+      priority: c.parentId ? 0.7 : 0.8,
     })),
     ...products.map((p) => ({
       url: `${SITE_URL}/product/${p.id}`,

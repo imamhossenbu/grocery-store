@@ -1,10 +1,11 @@
 import { PackageSearch } from 'lucide-react';
-import { getCategories, queryProducts } from '@/lib/data/catalog';
+import { getCategories, getCategoryTree, queryProducts } from '@/lib/data/catalog';
+import type { CategoryNode } from '@/types/store';
 import { ProductGrid } from '@/components/product/ProductCard';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { PRODUCTS_PER_PAGE } from '@/lib/constants';
 import { ActiveFilters } from './ActiveFilters';
-import { FilterPanel } from './FilterPanel';
+import { FilterPanel, type FilterCategory } from './FilterPanel';
 import { ListingProvider, PendingArea } from './ListingProvider';
 import { MobileFilters } from './MobileFilters';
 import { Pagination } from './Pagination';
@@ -25,7 +26,7 @@ interface Props {
 /** Shared listing for /shop, /category/[slug] and /search (URL-driven filters). */
 export async function ProductListing({ basePath, filters: raw, lockedCategory, searchMode, emptyFallback }: Props) {
   const filters: ListingFilters = lockedCategory ? { ...raw, category: undefined } : raw;
-  const [result, categories] = await Promise.all([
+  const [result, categories, tree] = await Promise.all([
     queryProducts({
       q: filters.q,
       category: lockedCategory ?? filters.category,
@@ -38,11 +39,22 @@ export async function ProductListing({ basePath, filters: raw, lockedCategory, s
       perPage: PRODUCTS_PER_PAGE,
     }),
     getCategories(),
+    getCategoryTree(),
   ]);
 
   const { items, total, page, pageCount, priceRange } = result;
-  const categoryNames = Object.fromEntries(categories.map((c) => [c.id, c.name]));
-  const filterCats = categories.map(({ id, name, productCount }) => ({ id, name, productCount }));
+  // Chip labels show the full chain: "Fruits › Local fruits".
+  const nameOf = new Map(categories.map((c) => [c.id, c]));
+  const categoryNames = Object.fromEntries(
+    categories.map((c) => {
+      const chain: string[] = [];
+      for (let cur: typeof c | undefined = c; cur && chain.length < 4; cur = cur.parentId ? nameOf.get(cur.parentId) : undefined) {
+        chain.unshift(cur.name);
+      }
+      return [c.id, chain.join(' › ')];
+    })
+  );
+  const filterCats = tree.map(toFilterCategory);
   const panel = {
     basePath,
     filters,
@@ -111,4 +123,13 @@ export async function ProductListing({ basePath, filters: raw, lockedCategory, s
       </div>
     </ListingProvider>
   );
+}
+
+function toFilterCategory(n: CategoryNode): FilterCategory {
+  return {
+    id: n.id,
+    name: n.name,
+    productCount: n.productCount,
+    ...(n.children.length ? { children: n.children.map(toFilterCategory) } : {}),
+  };
 }

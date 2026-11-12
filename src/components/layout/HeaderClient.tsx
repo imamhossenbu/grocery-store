@@ -1,14 +1,24 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import Link from 'next/link';
-import { ChevronDown, Heart, LayoutGrid, Leaf, Menu, PackageSearch, Search, ShoppingBasket, User, X } from 'lucide-react';
+import { ArrowRight, ChevronDown, Heart, LayoutGrid, Leaf, Menu, PackageSearch, Search, ShoppingBasket, User, X } from 'lucide-react';
 import { useShop } from '@/context/ShopContext';
 import { formatBDT } from '@/lib/format';
 import { HeaderSearch, type SearchIndex } from './HeaderSearch';
 
+export interface HeaderCategory {
+  id: string;
+  name: string;
+  image: string;
+  /** Products in this category and its subcategories. */
+  productCount: number;
+  children: HeaderCategory[];
+}
+
 interface Props {
-  categories: { id: string; name: string; image: string; productCount: number }[];
+  /** Top-level categories with their subcategories. */
+  categories: HeaderCategory[];
   index: SearchIndex;
 }
 
@@ -17,6 +27,16 @@ export function HeaderClient({ categories, index }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [catsOpen, setCatsOpen] = useState(false);
+  const [drawerOpenCats, setDrawerOpenCats] = useState<Set<string>>(() => new Set());
+  const catsButtonRef = useRef<HTMLButtonElement>(null);
+
+  const toggleDrawerCat = (id: string) =>
+    setDrawerOpenCats((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
   return (
     <div className="border-b border-[#dfece3] bg-white/95 backdrop-blur-md">
@@ -80,28 +100,76 @@ export function HeaderClient({ categories, index }: Props) {
       {/* Desktop category bar */}
       <nav className="hidden lg:block border-t border-[#eef5f0]" aria-label="Main">
         <div className="max-w-7xl mx-auto px-8 h-12 flex items-center gap-7 text-sm font-semibold text-[#234835]">
-          <div className="relative" onMouseLeave={() => setCatsOpen(false)}>
+          <div
+            className="relative"
+            onMouseLeave={() => setCatsOpen(false)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape' && catsOpen) {
+                setCatsOpen(false);
+                catsButtonRef.current?.focus();
+              }
+            }}
+            onBlur={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setCatsOpen(false);
+            }}
+          >
             <button
+              ref={catsButtonRef}
               onClick={() => setCatsOpen((o) => !o)}
               onMouseEnter={() => setCatsOpen(true)}
               aria-expanded={catsOpen}
+              aria-controls="mega-menu"
               className="inline-flex items-center gap-2 rounded-full bg-[#1a663b] text-white px-4 py-1.5 cursor-pointer"
             >
-              <LayoutGrid className="w-4 h-4" /> All categories <ChevronDown className="w-4 h-4" />
+              <LayoutGrid className="w-4 h-4" /> All categories <ChevronDown className={`w-4 h-4 transition-transform ${catsOpen ? 'rotate-180' : ''}`} />
             </button>
             {catsOpen && (
-              <div className="absolute left-0 top-full pt-2 z-50">
-                <div className="w-[540px] grid grid-cols-2 gap-1 rounded-2xl border border-[#dfece3] bg-white p-2 shadow-card">
-                  {categories.map((c) => (
-                    <Link key={c.id} href={`/category/${c.id}`} onClick={() => setCatsOpen(false)} className="flex items-center gap-3 rounded-xl p-2 hover:bg-[#f4f9f5]">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={c.image} alt="" className="w-11 h-11 rounded-xl object-cover" />
-                      <span>
-                        <span className="block text-sm font-bold text-[#112a1d]">{c.name}</span>
-                        <span className="text-xs font-medium text-[#5a7165]">{c.productCount} items</span>
-                      </span>
+              <div id="mega-menu" className="absolute left-0 top-full pt-2 z-50">
+                <div className="w-[min(60rem,calc(100vw-4rem))] rounded-3xl border border-[#dfece3] bg-white shadow-card">
+                  <ul className="grid max-h-[min(70vh,36rem)] grid-cols-3 gap-x-4 gap-y-5 overflow-y-auto p-5 xl:grid-cols-4">
+                    {categories.map((c) => (
+                      <li key={c.id} className="min-w-0">
+                        <Link
+                          href={`/category/${c.id}`}
+                          onClick={() => setCatsOpen(false)}
+                          className="group flex items-center gap-3 rounded-2xl p-1.5 hover:bg-[#f4f9f5]"
+                        >
+                          {c.image ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={c.image} alt="" className="w-11 h-11 shrink-0 rounded-xl object-cover" />
+                          ) : (
+                            <span className="w-11 h-11 shrink-0 rounded-xl bg-[#e8f5ee]" aria-hidden />
+                          )}
+                          <span className="min-w-0">
+                            <span className="block truncate font-display text-[15px] font-bold text-[#112a1d] group-hover:text-[#1a663b]">{c.name}</span>
+                            <span className="text-xs font-medium text-[#5a7165]">{c.productCount} items</span>
+                          </span>
+                        </Link>
+                        {c.children.length > 0 && (
+                          <ul className="mt-1.5 ml-[3.75rem] space-y-0.5 border-l-2 border-[#eef5f0] pl-2.5" aria-label={`${c.name} subcategories`}>
+                            {c.children.map((s) => (
+                              <li key={s.id}>
+                                <Link
+                                  href={`/category/${s.id}`}
+                                  onClick={() => setCatsOpen(false)}
+                                  className="flex items-center justify-between gap-2 rounded-lg px-2 py-1 text-[13px] font-medium text-[#445c50] hover:bg-[#f4f9f5] hover:text-[#1a663b]"
+                                >
+                                  <span className="truncate">{s.name}</span>
+                                  <span className="text-[11px] text-[#9ab5a5]">{s.productCount}</span>
+                                </Link>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="flex items-center justify-between gap-3 rounded-b-3xl border-t border-[#eef5f0] bg-[#f7fbf8] px-5 py-3 text-sm">
+                    <span className="text-[#5a7165]">Same-day delivery on every aisle across Dhaka.</span>
+                    <Link href="/category" onClick={() => setCatsOpen(false)} className="inline-flex items-center gap-1.5 font-bold text-[#1a663b] hover:underline">
+                      Browse all categories <ArrowRight className="w-4 h-4" />
                     </Link>
-                  ))}
+                  </div>
                 </div>
               </div>
             )}
@@ -134,16 +202,54 @@ export function HeaderClient({ categories, index }: Props) {
             </div>
             <p className="mt-6 mb-2 text-xs font-bold uppercase tracking-widest text-[#5a7165]">Categories</p>
             <ul className="space-y-1">
-              {categories.map((c) => (
-                <li key={c.id}>
-                  <Link href={`/category/${c.id}`} onClick={() => setMenuOpen(false)} className="flex items-center gap-3 rounded-xl p-2 hover:bg-[#f4f9f5]">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={c.image} alt="" className="w-9 h-9 rounded-lg object-cover" />
-                    <span className="flex-1 text-sm font-semibold text-[#112a1d]">{c.name}</span>
-                    <span className="text-xs text-[#5a7165]">{c.productCount}</span>
-                  </Link>
-                </li>
-              ))}
+              {categories.map((c) => {
+                const expanded = drawerOpenCats.has(c.id);
+                const listId = `drawer-cat-${c.id}`;
+                return (
+                  <li key={c.id}>
+                    <div className="flex items-center gap-1">
+                      <Link href={`/category/${c.id}`} onClick={() => setMenuOpen(false)} className="flex min-w-0 flex-1 items-center gap-3 rounded-xl p-2 hover:bg-[#f4f9f5]">
+                        {c.image ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={c.image} alt="" className="w-9 h-9 shrink-0 rounded-lg object-cover" />
+                        ) : (
+                          <span className="w-9 h-9 shrink-0 rounded-lg bg-[#e8f5ee]" aria-hidden />
+                        )}
+                        <span className="flex-1 truncate text-sm font-semibold text-[#112a1d]">{c.name}</span>
+                        <span className="text-xs text-[#5a7165]">{c.productCount}</span>
+                      </Link>
+                      {c.children.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => toggleDrawerCat(c.id)}
+                          aria-expanded={expanded}
+                          aria-controls={listId}
+                          aria-label={`${expanded ? 'Hide' : 'Show'} ${c.name} subcategories`}
+                          className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-[#1a663b] hover:bg-[#f0f7f2] cursor-pointer"
+                        >
+                          <ChevronDown className={`h-4 w-4 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+                        </button>
+                      )}
+                    </div>
+                    {c.children.length > 0 && (
+                      <ul id={listId} hidden={!expanded} className="mb-1 ml-6 space-y-0.5 border-l-2 border-[#e3efe7] pl-3">
+                        {c.children.map((s) => (
+                          <li key={s.id}>
+                            <Link
+                              href={`/category/${s.id}`}
+                              onClick={() => setMenuOpen(false)}
+                              className="flex items-center justify-between gap-2 rounded-lg px-2 py-2 text-sm text-[#234835] hover:bg-[#f4f9f5]"
+                            >
+                              <span className="truncate">{s.name}</span>
+                              <span className="text-xs text-[#7e9688]">{s.productCount}</span>
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
             <div className="mt-6 border-t border-[#eef5f0] pt-4 grid gap-1 text-sm text-[#445c50]">
               {[['/about', 'About us'], ['/faq', 'FAQ'], ['/contact', 'Contact'], ['/delivery', 'Delivery info']].map(([href, label]) => (

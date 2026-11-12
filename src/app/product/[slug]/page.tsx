@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import { Banknote, Clock, Leaf, MapPin, RotateCcw, ShieldCheck, Sparkles, Tag, Truck } from 'lucide-react';
-import { getAllProducts, getCategory, getProduct, getProductReviews, getRelatedProducts } from '@/lib/data/catalog';
+import { getAllProducts, getCategoryPath, getProduct, getProductReviews, getRelatedProducts } from '@/lib/data/catalog';
 import { formatBDT } from '@/lib/format';
 import { DELIVERY_FEE, FREE_DELIVERY_THRESHOLD, discountPercent } from '@/lib/pricing';
 import { DELIVERY_SLOTS, SITE_NAME, SITE_URL } from '@/lib/constants';
@@ -30,7 +30,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   const { slug } = await params;
   const product = await getProduct(slug);
   if (!product || !product.active) notFound();
-  const category = await getCategory(product.category);
+  const path = await getCategoryPath(product.category);
   const pct = discountPercent(product.price, product.oldPrice);
   const title = `${product.name} (${product.unit})`;
   const description =
@@ -40,7 +40,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
     title,
     description,
     alternates: { canonical: `/product/${product.id}` },
-    keywords: [product.name, category?.name ?? '', ...(product.tags ?? []), 'Dhaka grocery delivery'].filter(Boolean),
+    keywords: [product.name, ...path.map((c) => c.name), ...(product.tags ?? []), 'Dhaka grocery delivery'].filter(Boolean),
     openGraph: { type: 'website', title, description, url: `/product/${product.id}`, images },
     twitter: { card: 'summary_large_image', title, description, images: [product.image] },
   };
@@ -59,12 +59,13 @@ async function ProductDetail({ params }: { params: Params }) {
   const product = await getProduct(slug);
   if (!product || !product.active) notFound();
 
-  const [category, reviews, related] = await Promise.all([
-    getCategory(product.category),
+  const [path, reviews, related] = await Promise.all([
+    getCategoryPath(product.category),
     getProductReviews(product.id),
     getRelatedProducts(product, 4),
   ]);
 
+  const category = path.at(-1);
   const pct = discountPercent(product.price, product.oldPrice);
   const saved = pct ? product.oldPrice! - product.price : 0;
   const out = product.stock <= 0;
@@ -80,7 +81,7 @@ async function ProductDetail({ params }: { params: Params }) {
     description: product.description,
     image: images,
     sku: product.sku || product.id,
-    category: category?.name,
+    category: path.length ? path.map((c) => c.name).join(' > ') : undefined,
     brand: { '@type': 'Brand', name: SITE_NAME },
     offers: {
       '@type': 'Offer',
@@ -109,9 +110,9 @@ async function ProductDetail({ params }: { params: Params }) {
     }));
   }
 
-  const crumbs = [
-    { label: 'Shop', href: '/shop' },
-    ...(category ? [{ label: category.name, href: `/category/${category.id}` }] : []),
+  // Home › Fruits › Local fruits › Product (falls back to Shop when uncategorised).
+  const crumbs: { label: string; href?: string }[] = [
+    ...(path.length ? path.map((c) => ({ label: c.name, href: `/category/${c.id}` })) : [{ label: 'Shop', href: '/shop' }]),
     { label: product.name },
   ];
   const breadcrumbLd = {
@@ -164,7 +165,7 @@ async function ProductDetail({ params }: { params: Params }) {
           <dl className="grid grid-cols-1 gap-x-8 gap-y-2 rounded-2xl bg-[#f0f7f2] p-5 text-sm sm:grid-cols-2">
             {[
               ['Pack size', product.unit],
-              ['Category', category?.name ?? product.category],
+              ['Category', path.length ? path.map((c) => c.name).join(' › ') : product.category],
               ['Origin', product.origin],
               ['SKU', product.sku],
             ]
@@ -234,13 +235,20 @@ async function ProductDetail({ params }: { params: Params }) {
           />
 
           <div>
-            {category && (
-              <Link
-                href={`/category/${category.id}`}
-                className="inline-flex items-center gap-1.5 rounded-full border border-[#c5e5d2] bg-[#e5f4eb] px-3 py-1 text-xs font-bold uppercase tracking-widest text-[#165b34] hover:border-[#1a663b]"
-              >
-                {category.name}
-              </Link>
+            {path.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                {path.map((c, i) => (
+                  <Link
+                    key={c.id}
+                    href={`/category/${c.id}`}
+                    className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-widest hover:border-[#1a663b] ${
+                      i === path.length - 1 ? 'border-[#c5e5d2] bg-[#e5f4eb] text-[#165b34]' : 'border-[#dfece3] bg-white text-[#5a7165]'
+                    }`}
+                  >
+                    {c.name}
+                  </Link>
+                ))}
+              </div>
             )}
             <h1 className="mt-3 font-display text-3xl font-bold leading-tight tracking-tight text-[#112a1d] sm:text-4xl">{product.name}</h1>
 

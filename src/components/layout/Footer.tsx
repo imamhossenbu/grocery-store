@@ -1,11 +1,11 @@
 import Link from 'next/link';
 import { Banknote, Leaf, Mail, MapPin, Phone } from 'lucide-react';
-import { getCategories } from '@/lib/data/catalog';
+import { getTopCategories } from '@/lib/data/catalog';
 import { SUPPORT_EMAIL, SUPPORT_PHONE } from '@/lib/constants';
 import { NewsletterForm } from './NewsletterForm';
 
 export async function Footer() {
-  const categories = await getCategories();
+  const categories = await getTopCategories();
   return (
     <footer className="mt-auto bg-[#091e13] text-[#b9d8c5]">
       <div className="border-b border-[#163f29]">

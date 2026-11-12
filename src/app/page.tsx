@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { ArrowRight, Flame } from 'lucide-react';
 import {
   getBestSellers,
-  getCategories,
+  getTopCategories,
   getDeals,
   getFeaturedProducts,
   getNewArrivals,
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
 
 export default async function HomePage() {
   const [categories, featured, deals, bestSellers, newArrivals, coupons] = await Promise.all([
-    getCategories(),
+    getTopCategories(),
     getFeaturedProducts(8),
     getDeals(8),
     getBestSellers(4),

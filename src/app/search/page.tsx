@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { Search, SearchX } from 'lucide-react';
-import { getBestSellers, getCategories } from '@/lib/data/catalog';
+import { getBestSellers, getTopCategories } from '@/lib/data/catalog';
 import { suggestQuery } from '@/lib/data/discovery';
 import { Breadcrumbs } from '@/components/ui/Breadcrumbs';
 import { ProductGrid } from '@/components/product/ProductCard';
@@ -79,7 +79,7 @@ function SearchHeader({ q }: { q?: string }) {
 async function SearchResults({ searchParams }: { searchParams: SP }) {
   const filters = parseFilters(await searchParams);
   const [categories, popular, suggestion] = await Promise.all([
-    getCategories(),
+    getTopCategories(),
     getBestSellers(4),
     filters.q ? suggestQuery(filters.q) : Promise.resolve(null),
   ]);

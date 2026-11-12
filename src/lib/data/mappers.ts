@@ -5,7 +5,17 @@ const num = (v: unknown) => (v === null || v === undefined || v === '' ? undefin
 const str = (v: unknown) => (v === null || v === undefined ? undefined : String(v));
 
 export function toCategory(r: Row): Category {
-  return { id: String(r.id), name: String(r.name), blurb: String(r.blurb ?? ''), image: String(r.image ?? '') };
+  const parent = str(r.parent_id)?.trim();
+  const description = str(r.description)?.trim();
+  return {
+    id: String(r.id),
+    name: String(r.name),
+    blurb: String(r.blurb ?? ''),
+    image: String(r.image ?? ''),
+    ...(parent ? { parentId: parent } : {}),
+    ...(description ? { description } : {}),
+    ...(r.sort_order !== null && r.sort_order !== undefined ? { sortOrder: Number(r.sort_order) } : {}),
+  };
 }
 
 export function toProduct(r: Row): Product {

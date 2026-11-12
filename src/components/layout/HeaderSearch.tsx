@@ -8,7 +8,8 @@ import { formatBDT } from '@/lib/format';
 
 export interface SearchIndex {
   products: { id: string; name: string; unit: string; price: number; image: string; category: string }[];
-  categories: { id: string; name: string }[];
+  /** All categories; `parent` is the parent category's name for subcategories. */
+  categories: { id: string; name: string; parent?: string }[];
 }
 
 /** Instant suggestions from a small prefetched index; Enter goes to /search. */
@@ -24,7 +25,11 @@ export function HeaderSearch({ index, autoFocus = false, onDone }: { index: Sear
     if (!words.length) return { products: [], categories: [] };
     const match = (s: string) => words.every((w) => s.toLowerCase().includes(w));
     return {
-      categories: index.categories.filter((c) => match(c.name)).slice(0, 3),
+      // Name matches first, then subcategories whose parent matches ("fruits" → Local fruits in Fruits).
+      categories: [
+        ...index.categories.filter((c) => match(c.name)),
+        ...index.categories.filter((c) => !match(c.name) && c.parent && match(`${c.name} ${c.parent}`)),
+      ].slice(0, 5),
       products: index.products.filter((p) => match(`${p.name} ${p.category}`)).slice(0, 6),
     };
   }, [q, index]);
@@ -69,6 +74,8 @@ export function HeaderSearch({ index, autoFocus = false, onDone }: { index: Sear
           }}
           placeholder="Search mango, doi, honey, rice…"
           aria-label="Search products"
+          role="combobox"
+          aria-autocomplete="list"
           aria-expanded={showPanel}
           aria-controls="search-suggestions"
           className="w-full rounded-full border border-[#cfe3d6] bg-[#f4f9f5] pl-11 pr-10 py-2.5 text-sm text-[#112a1d] placeholder-[#6c8577] focus:border-[#1a663b] focus:bg-white focus:outline-none transition [&::-webkit-search-cancel-button]:hidden"
@@ -85,8 +92,15 @@ export function HeaderSearch({ index, autoFocus = false, onDone }: { index: Sear
           {results.categories.length > 0 && (
             <div className="flex flex-wrap gap-2 border-b border-[#eef5f0] p-3">
               {results.categories.map((c) => (
-                <button key={c.id} onClick={() => go(`/category/${c.id}`)} className="rounded-full bg-[#e8f5ee] px-3 py-1 text-xs font-bold text-[#14522f] hover:bg-[#d3eadc] cursor-pointer">
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => go(`/category/${c.id}`)}
+                  aria-label={c.parent ? `${c.name} in ${c.parent}` : c.name}
+                  className="rounded-full bg-[#e8f5ee] px-3 py-1 text-xs font-bold text-[#14522f] hover:bg-[#d3eadc] cursor-pointer"
+                >
                   {c.name}
+                  {c.parent && <span className="font-medium text-[#5a7165]"> in {c.parent}</span>}
                 </button>
               ))}
             </div>

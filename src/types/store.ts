@@ -4,6 +4,22 @@ export interface Category {
   blurb: string;
   image: string;
   iconName?: string;
+  /** Parent category id; absent for a top-level category. */
+  parentId?: string;
+  /** Longer copy for the category page (optional). */
+  description?: string;
+  sortOrder?: number;
+}
+
+/** A category with the number of active products in its whole subtree. */
+export interface CategoryWithCount extends Category {
+  productCount: number;
+  /** 0 for top-level, 1 for a subcategory, 2 for a sub-subcategory. */
+  depth: number;
+}
+
+export interface CategoryNode extends CategoryWithCount {
+  children: CategoryNode[];
 }
 
 export interface Product {

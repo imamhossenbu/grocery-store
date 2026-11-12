@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Home, Search, ShoppingBasket } from 'lucide-react';
-import { getCategories } from '@/lib/data/catalog';
+import { getTopCategories } from '@/lib/data/catalog';
 
 export const metadata: Metadata = {
   title: 'Page not found',
@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 };
 
 export default async function NotFound() {
-  const categories = await getCategories();
+  const categories = await getTopCategories();
 
   return (
     <div className="bg-hero-mesh">
