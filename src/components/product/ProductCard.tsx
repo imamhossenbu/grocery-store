@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Star, Sparkles } from 'lucide-react';
+import { Leaf, Star } from 'lucide-react';
 import type { Product } from '@/types/store';
 import { formatBDT } from '@/lib/format';
 import { discountPercent } from '@/lib/pricing';
@@ -25,7 +25,7 @@ export function ProductCard({ product, priority = false }: { product: Product; p
         <div className="absolute left-3 top-3 flex flex-col items-start gap-1.5">
           {product.badge && (
             <span className="inline-flex items-center gap-1 rounded-full bg-white/95 px-3 py-1 text-[11px] font-extrabold uppercase tracking-wider text-[#1a663b] shadow-sm">
-              <Sparkles className="w-3 h-3 text-[#f5b82e] fill-[#f5b82e]" />
+              <Leaf className="w-3 h-3 text-[#1a663b]" />
               {product.badge}
             </span>
           )}

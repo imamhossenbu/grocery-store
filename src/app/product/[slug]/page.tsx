@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
-import { Banknote, Clock, Leaf, MapPin, RotateCcw, ShieldCheck, Sparkles, Tag, Truck } from 'lucide-react';
+import { Banknote, Clock, Leaf, MapPin, RotateCcw, ShieldCheck, Tag, Truck } from 'lucide-react';
 import { getAllProducts, getCategoryPath, getProduct, getProductReviews, getRelatedProducts } from '@/lib/data/catalog';
 import { formatBDT } from '@/lib/format';
 import { DELIVERY_FEE, FREE_DELIVERY_THRESHOLD, discountPercent } from '@/lib/pricing';
@@ -224,7 +224,7 @@ async function ProductDetail({ params }: { params: Params }) {
               <>
                 {product.badge && (
                   <span className="inline-flex items-center gap-1 rounded-full bg-white/95 px-3 py-1 text-[11px] font-extrabold uppercase tracking-wider text-[#1a663b] shadow-sm">
-                    <Sparkles className="h-3 w-3 fill-[#f5b82e] text-[#f5b82e]" /> {product.badge}
+                    <Leaf className="h-3 w-3 text-[#1a663b]" /> {product.badge}
                   </span>
                 )}
                 {pct > 0 && (

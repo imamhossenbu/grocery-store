@@ -1,4 +1,4 @@
-import { MapPin, Sparkles, Truck } from 'lucide-react';
+import { Gift, MapPin, Truck } from 'lucide-react';
 import { getCategoryTree, getSearchIndex } from '@/lib/data/catalog';
 import type { CategoryNode } from '@/types/store';
 import { FREE_DELIVERY_THRESHOLD } from '@/lib/pricing';
@@ -12,7 +12,7 @@ export async function Header() {
       <div className="bg-[#0f2c1d] text-[#ecfdf5] text-xs py-2 px-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
           <p className="flex items-center gap-2 font-medium truncate">
-            <Sparkles className="w-3.5 h-3.5 shrink-0 text-[#f5b82e]" />
+            <Gift className="w-3.5 h-3.5 shrink-0 text-[#f5b82e]" />
             <span className="truncate">Free delivery over {formatBDT(FREE_DELIVERY_THRESHOLD)} · Use <strong className="text-[#f5b82e]">WELCOME50</strong> on your first order</span>
           </p>
           <div className="hidden md:flex items-center gap-5 text-[#b9d8c5] shrink-0">
