@@ -159,9 +159,13 @@ export function AddressPicker({
   const districtOptions: ComboOption[] = useMemo(() => {
     if (!index) return [];
     const divName = new Map(index.divisions.map((d) => [d.id, d.en]));
-    return index.districts
-      .filter((d) => !v.division || d.divisionId === v.division)
-      .map((d) => ({ ...d, meta: v.division ? undefined : `${divName.get(d.divisionId)} division` }));
+    // Every district stays selectable. Choosing a district sets its division,
+    // so filtering by division here would hide all the others and make it
+    // impossible to switch (e.g. Bogura → Dhaka). The chosen division's
+    // districts are listed first instead.
+    const all = index.districts.map((d) => ({ ...d, meta: `${divName.get(d.divisionId)} division` }));
+    if (!v.division) return all;
+    return [...all.filter((d) => d.divisionId === v.division), ...all.filter((d) => d.divisionId !== v.division)];
   }, [index, v.division]);
   const localityOptions: ComboOption[] = detail?.localities ?? [];
   const areaOptions: ComboOption[] = useMemo(
@@ -244,7 +248,7 @@ export function AddressPicker({
 
       <div className="grid gap-5 sm:grid-cols-2">
         {showDivision && (
-          <Field label={<>Division <Bn>বিভাগ</Bn></>} id={ids.division} optional hint="Narrows the district list." error={errors.division}>
+          <Field label={<>Division <Bn>বিভাগ</Bn></>} id={ids.division} optional hint="Shows this division’s districts first." error={errors.division}>
             {(p) => (
               <AddressCombobox
                 id={p.id}

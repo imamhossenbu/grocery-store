@@ -30,7 +30,8 @@ import { CHECKOUT_FIELDS, LIMITS, validateCheckout, validateField, type Checkout
 import type { PlaceOrderState } from '@/components/order/types';
 import { DELIVERY_SLOTS, SUPPORT_PHONE } from '@/lib/constants';
 import { AddressPicker, type AddressErrorField, type AddressErrors } from '@/components/address/AddressPicker';
-import type { AddressValue, GeoIndex, LocalityKind } from '@/lib/address/types';
+import { DHAKA_DISTRICT_ID, type AddressValue, type GeoIndex, type LocalityKind } from '@/lib/address/types';
+import { OUTSIDE_DHAKA_DELIVERY_FEE, deliveryFeeFor } from '@/lib/pricing';
 import { formatBDT } from '@/lib/format';
 import type { Coupon, Profile } from '@/types/store';
 import { CheckoutSkeleton } from './CheckoutSkeleton';
@@ -70,7 +71,7 @@ type PaymentChoice = 'cod' | 'sslcommerz';
 
 export function CheckoutForm({ live, signedIn, email, profile, coupons, onlinePayment, geo }: Props) {
   const router = useRouter();
-  const { hydrated, cart, cartCount, subtotal, discount, deliveryFee, total, coupon, setCoupon, clearCart, toast } = useShop();
+  const { hydrated, cart, cartCount, subtotal, discount, coupon, setCoupon, clearCart, toast } = useShop();
   const { checking, notices, dismissNotices } = useCartSync();
   const [state, formAction, pending] = useActionState(placeOrder, INITIAL);
   const now = useSyncExternalStore(subscribeMinute, getMinute, getServerMinute);
@@ -90,6 +91,10 @@ export function CheckoutForm({ live, signedIn, email, profile, coupons, onlinePa
     day: '',
     notes: '',
   }));
+  // The basket shows the Dhaka fee; once a district is chosen the fee follows it.
+  const outsideDhaka = !!values.district && values.district !== DHAKA_DISTRICT_ID;
+  const deliveryFee = deliveryFeeFor(subtotal, { outsideDhaka });
+  const total = Math.max(0, subtotal - discount + deliveryFee);
   const [clientErrors, setClientErrors] = useState<FieldErrors>({});
   const [touched, setTouched] = useState<Partial<Record<CheckoutField, boolean>>>({});
   const [serverErrors, setServerErrors] = useState<FieldErrors>({});
@@ -583,7 +588,13 @@ export function CheckoutForm({ live, signedIn, email, profile, coupons, onlinePa
 
       {/* Desktop: sticky summary */}
       <aside aria-label="Order summary" className="hidden lg:block lg:sticky lg:top-44 space-y-4">
-        <FreeDeliveryProgress subtotal={subtotal} />
+        {outsideDhaka ? (
+          <p className="rounded-2xl border border-[#d5eadc] bg-[#f4f9f5] p-4 text-sm font-semibold text-[#14522f]">
+            Courier delivery outside Dhaka is a flat {formatBDT(OUTSIDE_DHAKA_DELIVERY_FEE)}.
+          </p>
+        ) : (
+          <FreeDeliveryProgress subtotal={subtotal} />
+        )}
         <div className="rounded-3xl border border-[#dfece3] bg-white p-5 shadow-card">
           <h2 className="mb-4 font-display text-xl font-bold text-[#112a1d]">Order summary</h2>
           {summary}

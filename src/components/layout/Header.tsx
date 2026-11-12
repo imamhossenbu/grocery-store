@@ -13,7 +13,7 @@ export async function Header() {
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
           <p className="flex items-center gap-2 font-medium truncate">
             <Gift className="w-3.5 h-3.5 shrink-0 text-[#f5b82e]" />
-            <span className="truncate">Free delivery over {formatBDT(FREE_DELIVERY_THRESHOLD)} · Use <strong className="text-[#f5b82e]">WELCOME50</strong> on your first order</span>
+            <span className="truncate">Free delivery in Dhaka over {formatBDT(FREE_DELIVERY_THRESHOLD)} · Use <strong className="text-[#f5b82e]">WELCOME50</strong> on your first order</span>
           </p>
           <div className="hidden md:flex items-center gap-5 text-[#b9d8c5] shrink-0">
             <span className="inline-flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-[#f5b82e]" /> Same-day delivery in Dhaka</span>

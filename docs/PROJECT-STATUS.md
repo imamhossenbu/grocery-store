@@ -66,6 +66,14 @@ Never tested:
 - Admin actions against real data after the rebuild (product save, bulk actions, status change, CSV export).
 - Server rejection of an address whose upazila does not belong to the district.
 
+## Delivery fee (decided 13 Nov 2026)
+
+- Dhaka district: ৳60, free from ৳1000.
+- Every other district: flat ৳130 courier fee, no free-delivery threshold.
+- Orders with no district (older data) count as Dhaka.
+- The rule lives in `place_order()` in `supabase/schema.sql` (source of truth, applied to the live DB and tested for both cases) and is mirrored for display in `src/lib/pricing.ts`. Change both together.
+- Checkout recalculates the fee when the district changes (seen in a browser: Bogura → ৳130). The address picker now lists every district even after one is chosen; that last fix was type-checked and linted but not re-tested in a browser.
+
 ## Not done yet
 
 Storefront
@@ -93,7 +101,6 @@ Admin
 
 ## Open decisions and security follow-ups
 
-- **Delivery fee outside Dhaka.** Still ৳60 (free over ৳1000) everywhere; decide the courier fee and update `place_order` and `src/lib/pricing.ts` together.
 - **Rotate the Supabase secret key.** It was shared in a chat. Create a new one, update `.env.local` in both repos, then delete the old one.
 - **Delete the Supabase personal access token** used for setup (Dashboard → Account → Access Tokens).
 - **Delete `database.json` from the public `ecommerce-store` storage bucket.** It is the old data file with customer phone numbers and addresses and is still publicly readable. The app no longer uses it. A backup exists only on the first device at `grocery-store/.legacy/database.json` (git-ignored).

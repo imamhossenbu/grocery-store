@@ -4,7 +4,7 @@ import { Banknote, Clock, MapPin, PackageCheck, PhoneCall, Truck } from 'lucide-
 import { InfoBody, InfoHero, SupportCard } from '@/components/info/InfoLayout';
 import { DELIVERY_SLOTS, DHAKA_AREAS } from '@/lib/constants';
 import { formatBDT } from '@/lib/format';
-import { DELIVERY_FEE, FREE_DELIVERY_THRESHOLD } from '@/lib/pricing';
+import { DELIVERY_FEE, FREE_DELIVERY_THRESHOLD, OUTSIDE_DHAKA_DELIVERY_FEE } from '@/lib/pricing';
 
 export const metadata: Metadata = {
   title: 'Delivery information',
@@ -26,7 +26,7 @@ export default function DeliveryPage() {
         crumb="Delivery information"
         eyebrow="Delivery"
         title="Same-day delivery across Dhaka"
-        intro={<>Pick a slot that suits you and we’ll bring your groceries the same day. Delivery is <strong>free over {formatBDT(FREE_DELIVERY_THRESHOLD)}</strong>, and a flat {formatBDT(DELIVERY_FEE)} below that.</>}
+        intro={<>Pick a slot that suits you and we’ll bring your groceries the same day. Inside Dhaka, delivery is <strong>free over {formatBDT(FREE_DELIVERY_THRESHOLD)}</strong> and a flat {formatBDT(DELIVERY_FEE)} below that. Outside Dhaka we ship by courier in 2–4 days for a flat <strong>{formatBDT(OUTSIDE_DHAKA_DELIVERY_FEE)}</strong>.</>}
       />
       <InfoBody className="space-y-14">
         <section aria-labelledby="slots">

@@ -1,4 +1,4 @@
-import { DELIVERY_FEE, FREE_DELIVERY_THRESHOLD } from '@/lib/pricing';
+import { DELIVERY_FEE, FREE_DELIVERY_THRESHOLD, OUTSIDE_DHAKA_DELIVERY_FEE } from '@/lib/pricing';
 import { SUPPORT_EMAIL, SUPPORT_PHONE } from '@/lib/constants';
 
 export interface FaqItem {
@@ -13,6 +13,7 @@ export interface FaqGroup {
 }
 
 const fee = `৳${DELIVERY_FEE}`;
+const outsideFee = `৳${OUTSIDE_DHAKA_DELIVERY_FEE}`;
 const free = `৳${FREE_DELIVERY_THRESHOLD.toLocaleString('en-IN')}`;
 
 /** Plain-text answers so the same copy feeds the page and the FAQPage JSON-LD. */
@@ -27,7 +28,7 @@ export const FAQ_GROUPS: FaqGroup[] = [
       },
       {
         q: 'Is there a minimum order value?',
-        a: `There is no minimum. Orders under ${free} carry a ${fee} delivery charge; from ${free} upwards delivery is free.`,
+        a: `There is no minimum. Inside Dhaka, orders under ${free} carry a ${fee} delivery charge and delivery is free from ${free} upwards. Outside Dhaka, courier delivery is a flat ${outsideFee} per order.`,
       },
       {
         q: 'Can I change or cancel my order after placing it?',

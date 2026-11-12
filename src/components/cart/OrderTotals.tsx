@@ -1,6 +1,6 @@
 import { Truck } from 'lucide-react';
 import { formatBDT } from '@/lib/format';
-import { FREE_DELIVERY_THRESHOLD } from '@/lib/pricing';
+import { FREE_DELIVERY_THRESHOLD, OUTSIDE_DHAKA_DELIVERY_FEE } from '@/lib/pricing';
 
 export function FreeDeliveryProgress({ subtotal }: { subtotal: number }) {
   const remaining = Math.max(0, FREE_DELIVERY_THRESHOLD - subtotal);
@@ -27,6 +27,7 @@ export function FreeDeliveryProgress({ subtotal }: { subtotal: number }) {
       >
         <div className="h-full rounded-full bg-emerald-gradient transition-all duration-500" style={{ width: `${progress}%` }} />
       </div>
+      <p className="mt-2 text-[13px] text-[#3f5649]">Inside Dhaka. Outside Dhaka, courier delivery is a flat {formatBDT(OUTSIDE_DHAKA_DELIVERY_FEE)}.</p>
     </div>
   );
 }

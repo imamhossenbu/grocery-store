@@ -5,7 +5,7 @@ import { Suspense } from 'react';
 import { Banknote, Clock, Leaf, MapPin, RotateCcw, ShieldCheck, Tag, Truck } from 'lucide-react';
 import { getAllProducts, getCategoryPath, getProduct, getProductReviews, getRelatedProducts } from '@/lib/data/catalog';
 import { formatBDT } from '@/lib/format';
-import { DELIVERY_FEE, FREE_DELIVERY_THRESHOLD, discountPercent } from '@/lib/pricing';
+import { DELIVERY_FEE, FREE_DELIVERY_THRESHOLD, OUTSIDE_DHAKA_DELIVERY_FEE, discountPercent } from '@/lib/pricing';
 import { DELIVERY_SLOTS, SITE_NAME, SITE_URL } from '@/lib/constants';
 import { Breadcrumbs } from '@/components/ui/Breadcrumbs';
 import { ProductGrid } from '@/components/product/ProductCard';
@@ -133,7 +133,7 @@ async function ProductDetail({ params }: { params: Params }) {
         <ul className="mt-2 list-disc space-y-1 pl-5">
           <li>Same-day delivery across Dhaka for orders placed before 3 PM.</li>
           <li>
-            Free delivery on orders over {formatBDT(FREE_DELIVERY_THRESHOLD)}; otherwise a flat {formatBDT(DELIVERY_FEE)} fee.
+            In Dhaka: free delivery on orders over {formatBDT(FREE_DELIVERY_THRESHOLD)}, otherwise {formatBDT(DELIVERY_FEE)}. Outside Dhaka: flat {formatBDT(OUTSIDE_DHAKA_DELIVERY_FEE)} by courier.
           </li>
           <li>Choose a slot: {DELIVERY_SLOTS.map((s) => `${s.label} (${s.time})`).join(', ')}.</li>
           <li>Pay in cash when your groceries arrive — inspect before you pay.</li>
@@ -292,8 +292,8 @@ async function ProductDetail({ params }: { params: Params }) {
               {[
                 {
                   icon: Truck,
-                  title: `Free delivery over ${formatBDT(FREE_DELIVERY_THRESHOLD)}`,
-                  text: `Flat ${formatBDT(DELIVERY_FEE)} below that, anywhere in Dhaka.`,
+                  title: `Free delivery in Dhaka over ${formatBDT(FREE_DELIVERY_THRESHOLD)}`,
+                  text: `${formatBDT(DELIVERY_FEE)} below that in Dhaka. Outside Dhaka: flat ${formatBDT(OUTSIDE_DHAKA_DELIVERY_FEE)} by courier.`,
                 },
                 { icon: Clock, title: 'Same-day slots', text: DELIVERY_SLOTS.map((s) => s.time).join(' · ') },
                 { icon: Banknote, title: 'Cash on delivery', text: 'Check your groceries, then pay at the door.' },
