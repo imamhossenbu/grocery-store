@@ -8,6 +8,7 @@ import { ChevronDown, Heart, LayoutDashboard, LogOut, MessageSquareText, Package
 import { supabaseBrowser } from '@/lib/supabase/client';
 import { signOut } from '@/actions/auth';
 import { DropdownMenu } from '@/components/ui/DropdownMenu';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 function displayName(user: User): string {
   const meta = user.user_metadata as { full_name?: string; name?: string } | undefined;
@@ -50,7 +51,7 @@ export function HeaderAccount() {
   }, []);
 
   if (!ready) {
-    return <span aria-hidden className="block h-10 w-10 sm:w-28 rounded-full bg-[#eef5f0] animate-pulse" />;
+    return <Skeleton className="h-10 w-10 sm:w-28" rounded="full" />;
   }
 
   if (!user) {

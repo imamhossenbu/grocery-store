@@ -1,62 +1,69 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Suspense } from 'react';
-import { ShieldCheck } from 'lucide-react';
-import { Breadcrumbs } from '@/components/ui/Breadcrumbs';
-import { FormSkeleton } from '@/components/account/AuthShell';
+import { CalendarDays, Clock, KeyRound, Mail, ShieldCheck, Smartphone } from 'lucide-react';
 import { NewPasswordForm } from '@/components/account/NewPasswordForm';
-import { signOut } from '@/actions/auth';
+import { SecurityHeader } from '@/components/account/dashboard/headers';
+import { Panel } from '@/components/account/dashboard/PageHeader';
+import { SessionActions } from '@/components/account/dashboard/SessionActions';
+import { SecuritySkeleton } from '@/components/account/dashboard/skeletons';
 import { requireViewer } from '@/lib/data/account';
-import { formatDateTime } from '@/lib/format';
+import { formatDate, formatDateTime } from '@/lib/format';
 
 export const metadata: Metadata = { title: 'Security' };
 
 export default function AccountSecurityPage() {
   return (
-    <div className="space-y-6">
-      <Breadcrumbs items={[{ label: 'My account', href: '/account' }, { label: 'Security' }]} />
-      <div>
-        <h1 className="font-display text-3xl font-bold tracking-tight text-[#112a1d] sm:text-4xl">Security</h1>
-        <p className="mt-1 text-sm text-[#5a7165]">Change your password and manage how you’re signed in.</p>
-      </div>
-
-      <section aria-labelledby="change-password" className="rounded-[2rem] border border-[#dfece3] bg-white p-5 shadow-soft sm:p-8">
-        <h2 id="change-password" className="font-display text-xl font-bold text-[#112a1d]">Change password</h2>
-        <p className="mt-1 mb-6 text-sm text-[#5a7165]">
-          Enter your current password, then choose a new one. Forgotten it?{' '}
-          <Link href="/forgot-password" className="font-semibold text-[#1a663b] hover:underline">Reset it by email</Link>.
-        </p>
-        <Suspense fallback={<FormSkeleton fields={3} />}>
-          <SecurityGate />
-        </Suspense>
-      </section>
-
-      <section aria-labelledby="sessions" className="rounded-[2rem] border border-[#dfece3] bg-white p-5 shadow-soft sm:p-8">
-        <h2 id="sessions" className="font-display text-xl font-bold text-[#112a1d]">Sign out</h2>
-        <p className="mt-1 text-sm text-[#5a7165]">Using a shared or public device? Sign out when you’re done. Your basket and wishlist stay on this device.</p>
-        <form action={signOut} className="mt-5">
-          <button type="submit" className="inline-flex h-11 items-center rounded-full border-2 border-red-200 bg-white px-5 text-sm font-bold text-red-600 transition hover:bg-red-50 cursor-pointer">
-            Sign out of this device
-          </button>
-        </form>
-      </section>
-    </div>
+    <>
+      <SecurityHeader />
+      <Suspense fallback={<SecuritySkeleton />}>
+        <SecurityContent />
+      </Suspense>
+    </>
   );
 }
 
-async function SecurityGate() {
+async function SecurityContent() {
   const viewer = await requireViewer('/account/security');
+  const rows = [
+    { icon: <Mail />, label: 'Sign-in email', value: viewer.email },
+    { icon: <Clock />, label: 'Last sign-in', value: viewer.lastSignInAt ? formatDateTime(viewer.lastSignInAt) : 'Unknown' },
+    { icon: <CalendarDays />, label: 'Member since', value: formatDate(viewer.createdAt) },
+  ];
+
   return (
-    <div className="space-y-6">
-      <p className="flex items-start gap-2.5 rounded-2xl bg-[#f6faf7] px-4 py-3 text-sm text-[#445c50]">
-        <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#1a663b]" />
-        <span>
-          Signed in as <strong className="text-[#112a1d]">{viewer.email}</strong>
-          {viewer.lastSignInAt && <> · last sign-in {formatDateTime(viewer.lastSignInAt)}</>}
-        </span>
-      </p>
-      <div className="max-w-md">
-        <NewPasswordForm mode="change" />
+    <div className="fb-crossfade grid grid-cols-1 gap-5 lg:gap-6 xl:grid-cols-[1fr_22rem]">
+      <Panel title="Change password" icon={<KeyRound />} bodyClassName="sm:p-8 sm:pt-4">
+        <p className="mb-6 text-sm leading-relaxed text-[#3f5649]">
+          Enter your current password, then choose a new one. Forgotten it?{' '}
+          <Link href="/forgot-password" className="font-semibold text-[#1a663b] underline-offset-2 hover:underline">Reset it by email</Link>.
+        </p>
+        <div className="max-w-md">
+          <NewPasswordForm mode="change" />
+        </div>
+      </Panel>
+
+      <div className="space-y-5 lg:space-y-6">
+        <Panel title="Sign-in activity" icon={<ShieldCheck />} index={1}>
+          <dl className="space-y-2">
+            {rows.map((r) => (
+              <div key={r.label} className="flex items-center gap-3 rounded-2xl bg-[#f6faf7] px-3.5 py-3">
+                <span aria-hidden className="text-[#1a663b] [&>svg]:h-4 [&>svg]:w-4">{r.icon}</span>
+                <div className="min-w-0">
+                  <dt className="text-[13px] text-[#3f5649]">{r.label}</dt>
+                  <dd className="truncate text-sm font-semibold tabular-nums text-[#112a1d]">{r.value}</dd>
+                </div>
+              </div>
+            ))}
+          </dl>
+        </Panel>
+
+        <Panel title="Sessions" icon={<Smartphone />} index={2}>
+          <p className="mb-4 text-sm leading-relaxed text-[#3f5649]">
+            Lost a phone or used a shared computer? Sign out everywhere to end every session at once. Your basket and wishlist stay on this device.
+          </p>
+          <SessionActions />
+        </Panel>
       </div>
     </div>
   );

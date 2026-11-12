@@ -8,8 +8,10 @@ import { getWishlistProducts } from '@/actions/account';
 import { formatBDT } from '@/lib/format';
 import { discountPercent } from '@/lib/pricing';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { ProductGridSkeleton } from '@/components/ui/Skeleton';
+import { Pagination, usePagedList } from '@/components/ui/Pagination';
+import { ProductGridSkeleton, Skeleton } from '@/components/ui/Skeleton';
 import type { ProductSnapshot } from '@/types/store';
+import { Reveal } from '@/components/ui/motion';
 
 interface Row {
   saved: ProductSnapshot;
@@ -56,9 +58,17 @@ export function WishlistView() {
       available: lookup ? !!current || !loaded : true,
     };
   });
+  const pager = usePagedList(rows, { param: 'page', sizeParam: 'size', defaultSize: 12, sizeOptions: [12, 24, 48], scrollTargetId: 'wishlist-grid' });
   const addable = rows.filter((r) => r.available && r.current.stock > 0 && getQty(r.current.id) === 0);
 
-  if (!hydrated) return <ProductGridSkeleton count={4} />;
+  if (!hydrated) {
+    return (
+      <div className="space-y-6" role="status" aria-busy="true" aria-label="Loading your wishlist">
+        <Skeleton className="h-[4.75rem] w-full" rounded="3xl" />
+        <ProductGridSkeleton count={4} />
+      </div>
+    );
+  }
 
   if (wishlist.length === 0) {
     return (
@@ -83,11 +93,11 @@ export function WishlistView() {
         <p className="text-sm text-[#445c50]" aria-live="polite">
           <strong className="text-[#112a1d]">{wishlist.length}</strong> saved item{wishlist.length === 1 ? '' : 's'}
           {!loaded && !refreshFailed && (
-            <span className="ml-2 inline-flex items-center gap-1 text-xs text-[#7e9688]">
+            <span className="ml-2 inline-flex items-center gap-1 text-[13px] text-[#3f5649]">
               <Loader2 className="h-3 w-3 animate-spin" /> checking prices
             </span>
           )}
-          {refreshFailed && <span className="ml-2 text-xs text-amber-700">Couldn’t refresh prices — showing saved prices.</span>}
+          {refreshFailed && <span className="ml-2 text-[13px] text-amber-700">Couldn’t refresh prices — showing saved prices.</span>}
         </p>
         <button
           type="button"
@@ -100,9 +110,9 @@ export function WishlistView() {
         </button>
       </div>
 
-      <ul className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3 lg:grid-cols-4">
-        {rows.map((row) => (
-          <li key={row.saved.id}>
+      <ul id="wishlist-grid" className="grid scroll-mt-44 grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3 lg:grid-cols-4">
+        {pager.items.map((row, i) => (
+          <Reveal as="li" index={Math.min(i, 8)} key={row.saved.id} >
             <WishlistCard
               row={row}
               inBasket={getQty(row.current.id)}
@@ -112,9 +122,10 @@ export function WishlistView() {
               }}
               onRemove={() => toggleWishlist(row.saved)}
             />
-          </li>
+          </Reveal>
         ))}
       </ul>
+      <Pagination {...pager.props} itemLabel="saved items" />
     </div>
   );
 }
@@ -133,14 +144,14 @@ function WishlistCard({ row, inBasket, onMove, onRemove }: { row: Row; inBasket:
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={p.image} alt="" loading="lazy" className={`h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 ${out ? 'opacity-60 grayscale-[40%]' : ''}`} />
         <div className="absolute left-3 top-3 flex flex-col items-start gap-1.5">
-          {pct > 0 && <span className="rounded-full bg-[#f5b82e] px-2.5 py-1 text-[11px] font-extrabold text-[#3a2502] shadow-sm">-{pct}%</span>}
+          {pct > 0 && <span className="rounded-full bg-[#f5b82e] px-2.5 py-1 text-xs font-extrabold text-[#3a2502] shadow-sm">-{pct}%</span>}
           {delta < 0 && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-bold text-[#1a663b] shadow-sm">
+            <span className="inline-flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-xs font-bold text-[#1a663b] shadow-sm">
               <TrendingDown className="h-3 w-3" /> {formatBDT(-delta)} cheaper
             </span>
           )}
           {delta > 0 && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-bold text-amber-700 shadow-sm">
+            <span className="inline-flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-xs font-bold text-amber-700 shadow-sm">
               <TrendingUp className="h-3 w-3" /> Price up {formatBDT(delta)}
             </span>
           )}
@@ -155,7 +166,7 @@ function WishlistCard({ row, inBasket, onMove, onRemove }: { row: Row; inBasket:
         type="button"
         onClick={onRemove}
         aria-label={`Remove ${p.name} from wishlist`}
-        className="absolute right-3 top-3 grid h-9 w-9 place-items-center rounded-full bg-white/95 text-[#5a7165] shadow-md transition hover:scale-105 hover:text-red-600 cursor-pointer"
+        className="absolute right-3 top-3 grid h-9 w-9 place-items-center rounded-full bg-white/95 text-[#3f5649] shadow-md transition hover:scale-105 hover:text-red-600 cursor-pointer"
       >
         <Trash2 className="h-4 w-4" />
       </button>
@@ -169,9 +180,9 @@ function WishlistCard({ row, inBasket, onMove, onRemove }: { row: Row; inBasket:
           <div className="flex items-baseline justify-between gap-2">
             <div className="flex items-baseline gap-1.5">
               <span className="text-lg font-extrabold text-[#1a663b]">{formatBDT(p.price)}</span>
-              {pct > 0 && <span className="text-xs text-[#7e9688] line-through">{formatBDT(p.oldPrice!)}</span>}
+              {pct > 0 && <span className="text-[13px] text-[#3f5649] line-through">{formatBDT(p.oldPrice!)}</span>}
             </div>
-            <span className={`text-[11px] font-bold ${out ? 'text-red-600' : low ? 'text-amber-600' : 'text-emerald-700'}`}>
+            <span className={`text-[13px] font-semibold ${out ? 'text-red-600' : low ? 'text-amber-600' : 'text-emerald-700'}`}>
               {out ? 'Sold out' : low ? `Only ${p.stock} left` : 'In stock'}
             </span>
           </div>
@@ -180,14 +191,14 @@ function WishlistCard({ row, inBasket, onMove, onRemove }: { row: Row; inBasket:
             onClick={onMove}
             disabled={out}
             className={`mt-3 inline-flex h-10 w-full items-center justify-center gap-2 rounded-full text-xs font-semibold transition active:scale-[0.98] sm:text-sm cursor-pointer disabled:cursor-not-allowed ${
-              out ? 'bg-[#eef3f0] text-[#7e9688]' : 'bg-emerald-gradient text-white shadow-glow hover:brightness-105'
+              out ? 'bg-[#eef3f0] text-[#3f5649]' : 'bg-emerald-gradient text-white shadow-glow hover:brightness-105'
             }`}
           >
             <ShoppingBasket className="h-4 w-4" />
             {out ? 'Unavailable' : 'Move to basket'}
           </button>
           {inBasket > 0 && !out && (
-            <p className="mt-1.5 text-center text-[11px] font-semibold text-[#5a7165]">{inBasket} already in your basket</p>
+            <p className="mt-1.5 text-center text-[13px] font-medium text-[#3f5649]">{inBasket} already in your basket</p>
           )}
         </div>
       </div>

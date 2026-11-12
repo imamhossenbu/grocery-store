@@ -2,31 +2,28 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { PackageSearch, ShoppingBasket } from 'lucide-react';
-import { Breadcrumbs } from '@/components/ui/Breadcrumbs';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { OrderCard, OrderListSkeleton } from '@/components/account/OrderCard';
-import { getMyOrders, requireViewer } from '@/lib/data/account';
+import { OrdersHeader } from '@/components/account/dashboard/headers';
+import { OrdersExplorer } from '@/components/account/dashboard/OrdersExplorer';
+import { OrdersSkeleton } from '@/components/account/dashboard/skeletons';
+import { getAllMyOrders, requireViewer } from '@/lib/data/account';
 
 export const metadata: Metadata = { title: 'Orders' };
 
 export default function AccountOrdersPage() {
   return (
-    <div className="space-y-6">
-      <Breadcrumbs items={[{ label: 'My account', href: '/account' }, { label: 'Orders' }]} />
-      <div>
-        <h1 className="font-display text-3xl font-bold tracking-tight text-[#112a1d] sm:text-4xl">My orders</h1>
-        <p className="mt-1 text-sm text-[#5a7165]">Every order placed while signed in, newest first. Tap one for full details and live status.</p>
-      </div>
-      <Suspense fallback={<OrderListSkeleton count={4} />}>
-        <OrdersList />
+    <>
+      <OrdersHeader />
+      <Suspense fallback={<OrdersSkeleton />}>
+        <OrdersContent />
       </Suspense>
-    </div>
+    </>
   );
 }
 
-async function OrdersList() {
+async function OrdersContent() {
   await requireViewer('/account/orders');
-  const result = await getMyOrders(100);
+  const result = await getAllMyOrders();
 
   if (!result || !result.available) {
     return (
@@ -42,28 +39,24 @@ async function OrdersList() {
 
   if (result.orders.length === 0) {
     return (
-      <EmptyState
-        icon={<ShoppingBasket className="h-8 w-8" />}
-        title="No orders yet"
-        description="When you order while signed in, it shows up here so you can follow it and see what you bought."
-        actionLabel="Browse groceries"
-        actionHref="/shop"
-      />
+      <div className="fb-crossfade">
+        <EmptyState
+          icon={<ShoppingBasket className="h-8 w-8" />}
+          title="No orders yet"
+          description="When you order while signed in, it shows up here so you can track it, reorder and print invoices."
+          actionLabel="Browse groceries"
+          actionHref="/shop"
+        />
+      </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <p className="text-sm text-[#5a7165]" aria-live="polite">
-        Showing {result.orders.length} of {result.total} order{result.total === 1 ? '' : 's'}
-      </p>
-      <ul className="space-y-4">
-        {result.orders.map((entry) => (
-          <li key={entry.order.id}><OrderCard entry={entry} /></li>
-        ))}
-      </ul>
-      <p className="pt-2 text-center text-xs text-[#7e9688]">
-        Ordered as a guest? Find it on the <Link href="/track-order" className="font-semibold text-[#1a663b] hover:underline">track order</Link> page.
+    <div className="fb-crossfade space-y-6">
+      <OrdersExplorer orders={result.orders} />
+      <p className="text-center text-[13px] text-[#3f5649]">
+        Ordered as a guest? Find it on the{' '}
+        <Link href="/track-order" className="font-semibold text-[#1a663b] hover:underline">track order</Link> page.
       </p>
     </div>
   );

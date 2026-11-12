@@ -92,3 +92,73 @@ export async function submitReview(_prev: ReviewFormState, formData: FormData): 
     message: verified ? 'Thanks! Your verified review is now live.' : 'Thanks! Your review is now live.',
   };
 }
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export interface MyReviewFormState extends ReviewFormState {
+  review?: { rating: number; comment: string };
+}
+
+/**
+ * Edit one of the signed-in user's reviews from the account dashboard.
+ * The row is matched by id AND the verified user id, so a forged id can
+ * only ever touch the caller's own review.
+ */
+export async function updateMyReview(_prev: MyReviewFormState, formData: FormData): Promise<MyReviewFormState> {
+  const user = await getCurrentUser().catch(() => null);
+  if (!user) return { ok: false, message: 'Your session has expired. Please sign in again.' };
+
+  const reviewId = String(formData.get('reviewId') ?? '');
+  const rating = Number(formData.get('rating'));
+  const comment = String(formData.get('comment') ?? '').replace(/\r\n/g, '\n').trim();
+  if (!UUID_RE.test(reviewId)) return { ok: false, message: 'This review could not be found.' };
+
+  const fieldErrors: ReviewFormState['fieldErrors'] = {};
+  if (!Number.isInteger(rating) || rating < 1 || rating > 5) fieldErrors.rating = 'Choose a rating from 1 to 5 stars.';
+  if (comment.length < REVIEW_MIN_LENGTH) fieldErrors.comment = `Tell us a little more — at least ${REVIEW_MIN_LENGTH} characters.`;
+  else if (comment.length > REVIEW_MAX_LENGTH) fieldErrors.comment = `Please keep it under ${REVIEW_MAX_LENGTH} characters.`;
+  if (fieldErrors.rating || fieldErrors.comment) return { ok: false, message: 'Please fix the highlighted fields.', fieldErrors };
+
+  const { data, error } = await supabaseAdmin()
+    .from('reviews')
+    .update({ rating, comment })
+    .eq('id', reviewId)
+    .eq('user_id', user.id)
+    .select('product_id')
+    .maybeSingle();
+
+  if (error) {
+    console.error('updateMyReview', error);
+    return { ok: false, message: 'We could not save your review. Please try again.' };
+  }
+  if (!data) return { ok: false, message: 'This review could not be found.' };
+
+  updateTag('catalog');
+  updateTag(`reviews:${data.product_id}`);
+  return { ok: true, message: 'Review updated.', review: { rating, comment } };
+}
+
+/** Delete one of the signed-in user's reviews (scoped by the verified user id). */
+export async function deleteMyReview(reviewId: string): Promise<{ ok: boolean; message: string }> {
+  const user = await getCurrentUser().catch(() => null);
+  if (!user) return { ok: false, message: 'Your session has expired. Please sign in again.' };
+  if (typeof reviewId !== 'string' || !UUID_RE.test(reviewId)) return { ok: false, message: 'This review could not be found.' };
+
+  const { data, error } = await supabaseAdmin()
+    .from('reviews')
+    .delete()
+    .eq('id', reviewId)
+    .eq('user_id', user.id)
+    .select('product_id')
+    .maybeSingle();
+
+  if (error) {
+    console.error('deleteMyReview', error);
+    return { ok: false, message: 'We could not delete your review. Please try again.' };
+  }
+  if (!data) return { ok: false, message: 'This review could not be found.' };
+
+  updateTag('catalog');
+  updateTag(`reviews:${data.product_id}`);
+  return { ok: true, message: 'Review deleted.' };
+}
