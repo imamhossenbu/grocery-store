@@ -40,3 +40,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 !.env.example
+
+# local backup of the old public JSON store (contains customer data)
+/.legacy/
+/supabase/email-templates/preview.html

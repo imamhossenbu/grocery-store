@@ -1,4 +1,4 @@
-import { StoreDatabase } from '@/types/store';
+import type { StoreDatabase } from '../types/store.ts';
 
 export const INITIAL_STORE_DATA: StoreDatabase = {
   updatedAt: '2026-11-12T12:00:00.000Z',
@@ -430,6 +430,7 @@ export const INITIAL_STORE_DATA: StoreDatabase = {
       deliveryFee: 0,
       total: 1060,
       paymentMethod: 'cod',
+      paymentStatus: 'unpaid',
       status: 'Out for delivery',
     },
     {
@@ -476,6 +477,7 @@ export const INITIAL_STORE_DATA: StoreDatabase = {
       deliveryFee: 60,
       total: 925,
       paymentMethod: 'cod',
+      paymentStatus: 'unpaid',
       status: 'Confirmed',
     },
     {
@@ -514,6 +516,7 @@ export const INITIAL_STORE_DATA: StoreDatabase = {
       deliveryFee: 0,
       total: 909,
       paymentMethod: 'cod',
+      paymentStatus: 'unpaid',
       status: 'Delivered',
     },
     {
@@ -551,6 +554,7 @@ export const INITIAL_STORE_DATA: StoreDatabase = {
       deliveryFee: 0,
       total: 1540,
       paymentMethod: 'cod',
+      paymentStatus: 'unpaid',
       status: 'Pending',
     },
   ],
