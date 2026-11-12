@@ -175,6 +175,18 @@ export async function signUp(_prev: AuthFormState, formData: FormData): Promise<
     }
   }
 
+  // Supabase answers a sign-up for an already-registered email with a
+  // look-alike user that has no identities and sends no email. Without this
+  // check the shopper would wait for a code that never arrives.
+  if (user && !isNewUser) {
+    return {
+      ok: false,
+      message: 'An account with this email already exists. Sign in instead, or use “Forgot password” if you don’t remember it.',
+      fieldErrors: { email: 'This email is already registered.' },
+      values,
+    };
+  }
+
   if (!data.session) {
     return {
       ok: true,
