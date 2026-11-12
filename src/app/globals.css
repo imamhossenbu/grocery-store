@@ -102,3 +102,10 @@ body {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
+
+/* Thin scrollbar for scrollable panels (filter sidebar, menus). */
+.fb-scroll { scrollbar-width: thin; scrollbar-color: #c9ded1 transparent; }
+.fb-scroll::-webkit-scrollbar { width: 6px; }
+.fb-scroll::-webkit-scrollbar-track { background: transparent; }
+.fb-scroll::-webkit-scrollbar-thumb { background: #c9ded1; border-radius: 9999px; }
+.fb-scroll::-webkit-scrollbar-thumb:hover { background: #1a663b; }
