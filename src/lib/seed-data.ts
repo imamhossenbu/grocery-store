@@ -1,4 +1,4 @@
-import { StoreDatabase } from '@/types/store';
+import type { StoreDatabase } from '../types/store.ts';
 
 export const INITIAL_STORE_DATA: StoreDatabase = {
   updatedAt: '2026-11-12T12:00:00.000Z',
@@ -25,7 +25,7 @@ export const INITIAL_STORE_DATA: StoreDatabase = {
       id: 'organic',
       name: 'Organic Foods',
       blurb: '100% chemical-free natural goodness',
-      image: 'https://images.unsplash.com/photo-1587049352847-4a222e784d38?auto=format&fit=crop&w=800&q=80',
+      image: 'https://images.unsplash.com/photo-1553787434-45e1d245bfbb?auto=format&fit=crop&w=800&q=80',
     },
     {
       id: 'grocery',
@@ -241,7 +241,7 @@ export const INITIAL_STORE_DATA: StoreDatabase = {
       price: 650,
       oldPrice: 780,
       description: '100% raw, unfiltered wild honey harvested ethically by traditional Mouals from deep inside the Sundarbans mangrove forest.',
-      image: 'https://images.unsplash.com/photo-1587049352847-4a222e784d38?auto=format&fit=crop&w=800&q=80',
+      image: 'https://images.unsplash.com/photo-1587049352851-8d4e89133924?auto=format&fit=crop&w=800&q=80',
       badge: 'Organic',
       rating: 4.9,
       sku: 'OR-001',
@@ -311,7 +311,7 @@ export const INITIAL_STORE_DATA: StoreDatabase = {
       unit: '1 kg pack',
       price: 145,
       description: 'Aromatic small-grain deshi red lentils that boil down to a velvety, golden dal in 15 minutes without soaking.',
-      image: 'https://images.unsplash.com/photo-1515543904379-3d757afe72e4?auto=format&fit=crop&w=800&q=80',
+      image: 'https://images.unsplash.com/photo-1770617476260-1addeea7c826?auto=format&fit=crop&w=800&q=80',
       rating: 4.7,
       sku: 'GR-002',
       stock: 130,
@@ -430,6 +430,7 @@ export const INITIAL_STORE_DATA: StoreDatabase = {
       deliveryFee: 0,
       total: 1060,
       paymentMethod: 'cod',
+      paymentStatus: 'unpaid',
       status: 'Out for delivery',
     },
     {
@@ -460,7 +461,7 @@ export const INITIAL_STORE_DATA: StoreDatabase = {
           unit: '1 kg pack',
           price: 145,
           qty: 2,
-          image: 'https://images.unsplash.com/photo-1515543904379-3d757afe72e4?auto=format&fit=crop&w=800&q=80',
+          image: 'https://images.unsplash.com/photo-1770617476260-1addeea7c826?auto=format&fit=crop&w=800&q=80',
         },
         {
           productId: 'eggs-free-range',
@@ -476,6 +477,7 @@ export const INITIAL_STORE_DATA: StoreDatabase = {
       deliveryFee: 60,
       total: 925,
       paymentMethod: 'cod',
+      paymentStatus: 'unpaid',
       status: 'Confirmed',
     },
     {
@@ -497,7 +499,7 @@ export const INITIAL_STORE_DATA: StoreDatabase = {
           unit: '500 g glass jar',
           price: 650,
           qty: 1,
-          image: 'https://images.unsplash.com/photo-1587049352847-4a222e784d38?auto=format&fit=crop&w=800&q=80',
+          image: 'https://images.unsplash.com/photo-1587049352851-8d4e89133924?auto=format&fit=crop&w=800&q=80',
         },
         {
           productId: 'mustard-oil-ghani',
@@ -514,6 +516,7 @@ export const INITIAL_STORE_DATA: StoreDatabase = {
       deliveryFee: 0,
       total: 909,
       paymentMethod: 'cod',
+      paymentStatus: 'unpaid',
       status: 'Delivered',
     },
     {
@@ -551,6 +554,7 @@ export const INITIAL_STORE_DATA: StoreDatabase = {
       deliveryFee: 0,
       total: 1540,
       paymentMethod: 'cod',
+      paymentStatus: 'unpaid',
       status: 'Pending',
     },
   ],

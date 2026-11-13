@@ -1,6 +1,15 @@
 @import "tailwindcss";
 
+/* Account dashboard: sidebar collapsed to icons (set on <html> before paint). */
+@custom-variant acct-collapsed (html[data-acct-collapsed] &);
+
 :root {
+  /* Text tokens (WCAG AA on white and mint surfaces). Use --text-subtle only
+     for placeholders, disabled text and decorative marks. */
+  --text-strong: #112a1d;
+  --text-body: #234835;
+  --text-muted: #3f5649;
+  --text-subtle: #7e9688;
   --background: #f9fbf9;
   --foreground: #112a1d;
   --card: #ffffff;
@@ -22,12 +31,21 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-jakarta), system-ui, sans-serif;
   --font-display: var(--font-fraunces), Georgia, serif;
+  /* text-ink / text-ink-body / text-ink-muted / text-ink-subtle */
+  --color-ink: var(--text-strong);
+  --color-ink-body: var(--text-body);
+  --color-ink-muted: var(--text-muted);
+  --color-ink-subtle: var(--text-subtle);
+  /* text-meta = 13px / 1.45 for secondary lines (dates, hints, counts). */
+  --text-meta: 0.8125rem;
+  --text-meta--line-height: 1.45;
 }
 
 body {
   background-color: var(--background);
   color: var(--foreground);
   font-family: var(--font-jakarta), system-ui, -apple-system, sans-serif;
+  line-height: 1.5;
   overflow-x: hidden;
 }
 
@@ -90,4 +108,135 @@ body {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #1a663b;
+}
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes slideInRight { from { transform: translateX(100%); } to { transform: none; } }
+.animate-fadeIn { animation: fadeIn 0.2s ease-out; }
+.animate-slideIn { animation: slideIn 0.25s ease-out; }
+.animate-slideInRight { animation: slideInRight 0.28s cubic-bezier(0.2, 0.8, 0.2, 1); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+/* ---------------------------------------------------------------------------
+ * UI primitives (src/components/ui): focus, scrollbars, overlay motion,
+ * skeleton shimmer.
+ * ------------------------------------------------------------------------- */
+
+/* Brand focus ring instead of the browser default (keyboard focus only). */
+:focus-visible {
+  outline: 2px solid #1a663b;
+  outline-offset: 2px;
+}
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Thin brand scrollbars for scrollable panels. */
+.fb-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #b9d8c5 transparent;
+}
+.fb-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+.fb-scroll::-webkit-scrollbar-track { background: transparent; }
+/* Horizontal strips (tabs, rails): no visible scrollbar. */
+.fb-scroll-x { scrollbar-width: none; }
+.fb-scroll-x::-webkit-scrollbar { display: none; }
+
+@keyframes fbFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fbFadeOut { from { opacity: 1; } to { opacity: 0; } }
+@keyframes fbPop { from { opacity: 0; transform: translateY(10px) scale(0.97); } to { opacity: 1; transform: none; } }
+@keyframes fbLeft { from { transform: translateX(-100%); } to { transform: none; } }
+@keyframes fbRight { from { transform: translateX(100%); } to { transform: none; } }
+@keyframes fbUp { from { transform: translateY(100%); } to { transform: none; } }
+@keyframes fbDrop { from { opacity: 0; transform: translateY(-6px) scale(0.98); } to { opacity: 1; transform: none; } }
+@keyframes fbRise { from { opacity: 0; transform: translateY(6px) scale(0.98); } to { opacity: 1; transform: none; } }
+
+.fb-anim-fade { animation: fbFade 0.18s ease-out both; }
+.fb-anim-fade-out { animation: fbFadeOut 0.18s ease-in both; }
+.fb-anim-pop { animation: fbPop 0.22s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.fb-anim-left { animation: fbLeft 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.fb-anim-right { animation: fbRight 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.fb-anim-up { animation: fbUp 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.fb-anim-drop { animation: fbDrop 0.14s ease-out both; transform-origin: top; }
+.fb-anim-rise { animation: fbRise 0.14s ease-out both; transform-origin: bottom; }
+/* Exit: panels reverse their entrance while the backdrop fades. */
+[data-closing].fb-anim-pop { animation: fbFadeOut 0.16s ease-in both; }
+[data-closing].fb-anim-left { animation: fbLeft 0.2s ease-in reverse both; }
+[data-closing].fb-anim-right { animation: fbRight 0.2s ease-in reverse both; }
+[data-closing].fb-anim-up { animation: fbUp 0.2s ease-in reverse both; }
+
+/* Skeleton shimmer. */
+@keyframes fbShimmer { from { background-position: 150% 0; } to { background-position: -50% 0; } }
+.fb-skeleton {
+  background-color: #e8f2ec;
+  background-image: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.65) 50%, rgba(255, 255, 255, 0) 100%);
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  animation: fbShimmer 1.4s ease-in-out infinite;
+}
+.fb-skeleton-dark {
+  background-color: rgba(255, 255, 255, 0.12);
+  background-image: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.18) 50%, rgba(255, 255, 255, 0) 100%);
+}
+@media (prefers-reduced-motion: reduce) {
+  .fb-skeleton { animation: none; background-image: none; }
+}
+
+/* ---------------------------------------------------------------------------
+ * Motion utilities (shared). All are short, ease-out and disabled by the
+ * prefers-reduced-motion rule above.
+ *  .fb-enter            fade + slight rise on mount; stagger with style={{'--fb-i': n}}
+ *  .fb-crossfade        fade-in for content replacing a skeleton
+ *  .fb-press            tactile press feedback for buttons / cards
+ *  .fb-lift             hover lift for list items and cards
+ *  .fb-grow-y / -x      bar draw-in (origin bottom / left), stagger with --fb-i
+ *  [data-closing] .fb-anim-drop/.fb-anim-rise   popup exit
+ * ------------------------------------------------------------------------- */
+@keyframes fbEnter { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes fbGrowY { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@keyframes fbGrowX { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes fbPopOut { from { opacity: 1; transform: none; } to { opacity: 0; transform: scale(0.97); } }
+
+.fb-enter {
+  animation: fbEnter 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(var(--fb-i, 0) * 45ms);
+}
+.fb-crossfade { animation: fbFade 0.24s ease-out both; }
+.fb-press { transition: transform 0.15s ease-out, box-shadow 0.2s ease-out, background-color 0.2s, border-color 0.2s, color 0.2s; }
+.fb-press:active { transform: scale(0.97); }
+.fb-lift { transition: transform 0.2s ease-out, box-shadow 0.2s ease-out, border-color 0.2s; }
+.fb-lift:hover { transform: translateY(-2px); box-shadow: 0 20px 42px -18px rgba(15, 44, 29, 0.16), 0 4px 12px -3px rgba(15, 44, 29, 0.06); }
+.fb-grow-y {
+  transform-box: fill-box;
+  transform-origin: bottom;
+  animation: fbGrowY 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(var(--fb-i, 0) * 60ms);
+}
+.fb-grow-x {
+  transform-origin: left;
+  animation: fbGrowX 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(var(--fb-i, 0) * 60ms);
+}
+[data-closing].fb-anim-drop,
+[data-closing].fb-anim-rise { animation: fbPopOut 0.12s ease-in both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .fb-enter, .fb-crossfade, .fb-grow-y, .fb-grow-x { animation: none; }
+  .fb-lift:hover, .fb-press:active { transform: none; }
+}
+
+/* Line draw-in that works with responsive variants (e.g. md:fb-draw-x). */
+@utility fb-draw-y {
+  transform-origin: top;
+  animation: fbGrowY 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(var(--fb-i, 0) * 120ms + 150ms);
+}
+@utility fb-draw-x {
+  transform-origin: left;
+  animation: fbGrowX 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(var(--fb-i, 0) * 120ms + 150ms);
 }

@@ -1,296 +1,148 @@
-'use client';
-
-import React, { useMemo, useState } from 'react';
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import { ArrowRight, Flame } from 'lucide-react';
 import {
-  ArrowUpDown,
-  CheckCircle2,
-  PackageOpen,
-  Search,
-  Sparkles,
-  X,
-} from 'lucide-react';
-import { Order, Product } from '@/types/store';
-import { useStore } from '@/context/StoreContext';
-import { Navbar } from '@/components/store/Navbar';
-import { HeroSection } from '@/components/store/HeroSection';
-import { CategoryFilter } from '@/components/store/CategoryFilter';
-import { ProductCard } from '@/components/store/ProductCard';
-import { DealsSection } from '@/components/store/DealsSection';
-import { WhyChooseUsSection } from '@/components/store/WhyChooseUsSection';
-import { TestimonialsSection } from '@/components/store/TestimonialsSection';
-import { Footer } from '@/components/store/Footer';
-import { CartSlideOver } from '@/components/store/CartSlideOver';
-import { CheckoutModal } from '@/components/store/CheckoutModal';
-import { OrderSuccessModal } from '@/components/store/OrderSuccessModal';
-import { OrderTrackingModal } from '@/components/store/OrderTrackingModal';
-import { ProductQuickViewModal } from '@/components/store/ProductQuickViewModal';
-import { ProductCardSkeleton } from '@/components/ui/Skeleton';
-import { EmptyState } from '@/components/ui/EmptyState';
-import { SectionHeader } from '@/components/ui/SectionHeader';
+  getBestSellers,
+  getTopCategories,
+  getDeals,
+  getFeaturedProducts,
+  getNewArrivals,
+  getPublicCoupons,
+} from '@/lib/data/catalog';
+import { SITE_NAME, SITE_URL, SUPPORT_PHONE } from '@/lib/constants';
+import { discountPercent } from '@/lib/pricing';
+import { ProductRail } from '@/components/product/ProductRail';
+import { RecentlyViewed } from '@/components/product/RecentlyViewed';
+import { JsonLd } from '@/components/product/JsonLd';
+import { CouponCard } from '@/components/shop/CouponCard';
+import { Hero } from '@/components/home/Hero';
+import { CategoryGrid } from '@/components/home/CategoryGrid';
+import { DealCountdown } from '@/components/home/DealCountdown';
+import { HomeSection } from '@/components/home/HomeSection';
+import { WhyChooseUsSection } from '@/components/home/WhyChooseUsSection';
+import { TestimonialsSection } from '@/components/home/TestimonialsSection';
 
-export default function StorefrontHomePage() {
-  const {
-    loading,
-    products,
-    categories,
-    isCheckoutOpen,
-    setIsCheckoutOpen,
-    applyCouponCode,
-    toasts,
-    dismissToast,
-  } = useStore();
+export const metadata: Metadata = {
+  alternates: { canonical: '/' },
+};
 
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [sortBy, setSortBy] = useState<'popular' | 'price-asc' | 'price-desc' | 'name'>('popular');
-
-  const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
-  const [trackingOpen, setTrackingOpen] = useState(false);
-  const [trackingOrderId, setTrackingOrderId] = useState<string>('');
-  const [placedOrder, setPlacedOrder] = useState<Order | null>(null);
-
-  // Filter & Sort Products
-  const filteredProducts = useMemo(() => {
-    return products
-      .filter((p) => {
-        const matchesCategory =
-          selectedCategory === 'all' || p.category === selectedCategory;
-        const matchesQuery =
-          !searchQuery.trim() ||
-          p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          p.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          p.category.toLowerCase().includes(searchQuery.toLowerCase());
-        return matchesCategory && matchesQuery;
-      })
-      .sort((a, b) => {
-        if (sortBy === 'price-asc') return a.price - b.price;
-        if (sortBy === 'price-desc') return b.price - a.price;
-        if (sortBy === 'name') return a.name.localeCompare(b.name);
-        return (b.featured ? 1 : 0) - (a.featured ? 1 : 0);
-      });
-  }, [products, selectedCategory, searchQuery, sortBy]);
-
-  const scrollToSection = (id: string) => {
-    const el = document.getElementById(id);
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
-
-  const handleApplyPromo = (code: string) => {
-    applyCouponCode(code);
-    scrollToSection('catalog-section');
-  };
+export default async function HomePage() {
+  const [categories, featured, deals, bestSellers, newArrivals, coupons] = await Promise.all([
+    getTopCategories(),
+    getFeaturedProducts(8),
+    getDeals(8),
+    getBestSellers(4),
+    getNewArrivals(4),
+    getPublicCoupons(),
+  ]);
+  const biggestDeal = deals[0] ? discountPercent(deals[0].price, deals[0].oldPrice) : 0;
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#f9fbf9] text-[#112a1d]">
-      {/* Navigation */}
-      <Navbar
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        onOpenTracking={() => {
-          setTrackingOrderId('');
-          setTrackingOpen(true);
+    <>
+      <JsonLd
+        data={{
+          '@context': 'https://schema.org',
+          '@type': 'GroceryStore',
+          name: SITE_NAME,
+          url: SITE_URL,
+          telephone: SUPPORT_PHONE,
+          priceRange: '৳',
+          currenciesAccepted: 'BDT',
+          paymentAccepted: 'Cash',
+          address: { '@type': 'PostalAddress', addressLocality: 'Dhaka', addressCountry: 'BD' },
+          areaServed: { '@type': 'City', name: 'Dhaka' },
+          potentialAction: {
+            '@type': 'SearchAction',
+            target: `${SITE_URL}/search?q={search_term_string}`,
+            'query-input': 'required name=search_term_string',
+          },
         }}
-        onScrollToSection={scrollToSection}
       />
 
-      <main className="flex-1">
-        {/* Hero Section */}
-        <HeroSection
-          onShopClick={() => scrollToSection('catalog-section')}
-          onDealsClick={() => scrollToSection('deals-section')}
-        />
+      <Hero categories={categories} spotlight={deals[0] ?? featured[0]} />
 
-        {/* Categories Section */}
-        <CategoryFilter
-          categories={categories}
-          products={products}
-          selectedCategory={selectedCategory}
-          onSelectCategory={(id) => {
-            setSelectedCategory(id);
-            scrollToSection('catalog-section');
-          }}
-        />
+      <HomeSection
+        eyebrow="Shop by aisle"
+        title="Browse categories"
+        subtitle="Everything for the Bangladeshi kitchen, from the bazaar to your door."
+        href="/shop"
+        hrefLabel="Shop all products"
+      >
+        <CategoryGrid categories={categories} />
+      </HomeSection>
 
-        {/* Product Catalog Grid Section */}
-        <section id="catalog-section" className="py-12 md:py-16">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex flex-wrap items-center justify-between gap-4 pb-8 border-b border-[#e2efe6]">
-              <SectionHeader
-                eyebrow={
-                  selectedCategory === 'all'
-                    ? 'Fresh Catalog'
-                    : categories.find((c) => c.id === selectedCategory)?.name || 'Category'
-                }
-                title="Fresh Picks of the Day"
-                subtitle="High-quality vegetables, fruits, dairy, and grocery priced in BDT."
-              />
+      {featured.length > 0 && (
+        <HomeSection
+          eyebrow="Handpicked"
+          title="Featured this week"
+          subtitle="Our buyers' picks from this week's harvest."
+          href="/shop"
+          className="bg-white/60"
+        >
+          <ProductRail products={featured} label="Featured products" priorityCount={2} />
+        </HomeSection>
+      )}
 
-              {/* Sort Selector */}
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-[#5a7165] flex items-center gap-1">
-                  <ArrowUpDown className="w-3.5 h-3.5" />
-                  Sort:
-                </span>
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-                  className="rounded-full border border-[#cfe3d6] bg-white px-3.5 py-1.5 text-xs font-semibold text-[#112a1d] focus:border-[#1a663b] focus:outline-none cursor-pointer"
-                >
-                  <option value="popular">Most Popular &amp; Featured</option>
-                  <option value="price-asc">Price: Low to High</option>
-                  <option value="price-desc">Price: High to Low</option>
-                  <option value="name">Alphabetical (A - Z)</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Active Filters Bar */}
-            {(selectedCategory !== 'all' || searchQuery) && (
-              <div className="mt-4 flex flex-wrap items-center gap-2">
-                <span className="text-xs text-[#5a7165]">Active Filters:</span>
-                {selectedCategory !== 'all' && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-[#e8f5ee] px-3 py-1 text-xs font-bold text-[#14522f]">
-                    Category: {categories.find((c) => c.id === selectedCategory)?.name}
-                    <button
-                      onClick={() => setSelectedCategory('all')}
-                      className="hover:text-red-600 cursor-pointer ml-1"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
+      {deals.length > 0 && (
+        <section className="py-6 sm:py-10" aria-labelledby="deals-heading">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="relative overflow-hidden rounded-[2.5rem] bg-forest-gradient px-4 py-10 shadow-card sm:px-8 lg:px-10">
+              <div aria-hidden className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-[#f5b82e]/15 blur-3xl" />
+              <div className="relative flex flex-wrap items-end justify-between gap-4">
+                <div>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-[#f5b82e] px-3 py-1 text-xs font-extrabold uppercase tracking-widest text-[#3a2502]">
+                    <Flame className="h-3.5 w-3.5" /> Hot deals
                   </span>
-                )}
-                {searchQuery && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-[#fef3c7] px-3 py-1 text-xs font-bold text-[#78350f]">
-                    Query: &quot;{searchQuery}&quot;
-                    <button
-                      onClick={() => setSearchQuery('')}
-                      className="hover:text-red-600 cursor-pointer ml-1"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </span>
-                )}
-                <button
-                  onClick={() => {
-                    setSelectedCategory('all');
-                    setSearchQuery('');
-                  }}
-                  className="text-xs text-[#1a663b] font-bold underline hover:text-[#112a1d] cursor-pointer"
-                >
-                  Clear all
-                </button>
+                  <h2 id="deals-heading" className="mt-3 font-display text-3xl font-bold text-white sm:text-4xl">
+                    Save up to {biggestDeal}% today
+                  </h2>
+                  <p className="mt-1 text-sm text-[#b9d8c5]">Fresh markdowns on seasonal favourites — while stocks last.</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-4">
+                  <DealCountdown />
+                  <Link href="/deals" className="inline-flex h-10 items-center gap-1.5 rounded-full bg-white px-4 text-sm font-bold text-[#0f2c1d] hover:bg-[#f0f7f2]">
+                    All deals <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </div>
               </div>
-            )}
-
-            {/* Grid or Skeleton or Empty State */}
-            <div className="mt-8">
-              {loading ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                  {Array.from({ length: 8 }).map((_, i) => (
-                    <ProductCardSkeleton key={i} />
-                  ))}
-                </div>
-              ) : filteredProducts.length === 0 ? (
-                <EmptyState
-                  icon={<PackageOpen className="w-8 h-8" />}
-                  title="No groceries matched your search"
-                  description="Try adjusting your keyword or reset your filter to view all fresh groceries."
-                  actionLabel="Reset Filters"
-                  onAction={() => {
-                    setSelectedCategory('all');
-                    setSearchQuery('');
-                  }}
-                />
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                  {filteredProducts.map((prod) => (
-                    <ProductCard
-                      key={prod.id}
-                      product={prod}
-                      onQuickView={setQuickViewProduct}
-                    />
-                  ))}
-                </div>
-              )}
+              <div className="relative mt-8">
+                <ProductRail products={deals.slice(0, 4)} label="Deals" />
+              </div>
             </div>
           </div>
         </section>
+      )}
 
-        {/* Deals & Promo Section */}
-        <DealsSection
-          onShopCategory={(cat) => {
-            setSelectedCategory(cat);
-            scrollToSection('catalog-section');
-          }}
-          onApplyPromo={handleApplyPromo}
-        />
+      <HomeSection eyebrow="Most loved" title="Best sellers" subtitle="What Dhaka households reorder most." href="/shop">
+        <ProductRail products={bestSellers} label="Best sellers" />
+      </HomeSection>
 
-        {/* Why Choose Us */}
-        <WhyChooseUsSection />
+      <HomeSection eyebrow="Just in" title="New arrivals" href="/shop?sort=newest" className="bg-white/60">
+        <ProductRail products={newArrivals} label="New arrivals" />
+      </HomeSection>
 
-        {/* Testimonials */}
-        <TestimonialsSection />
-      </main>
-
-      {/* Footer */}
-      <Footer />
-
-      {/* Modals & Slide-overs */}
-      <CartSlideOver />
-
-      <CheckoutModal
-        isOpen={isCheckoutOpen}
-        onClose={() => setIsCheckoutOpen(false)}
-        onOrderSuccess={(order) => {
-          setPlacedOrder(order);
-        }}
-      />
-
-      <OrderSuccessModal
-        order={placedOrder}
-        onClose={() => setPlacedOrder(null)}
-        onTrackOrder={(orderId) => {
-          setTrackingOrderId(orderId);
-          setTrackingOpen(true);
-        }}
-      />
-
-      <OrderTrackingModal
-        isOpen={trackingOpen}
-        onClose={() => setTrackingOpen(false)}
-        initialOrderId={trackingOrderId}
-      />
-
-      <ProductQuickViewModal
-        product={quickViewProduct}
-        onClose={() => setQuickViewProduct(null)}
-      />
-
-      {/* Toast Notifications */}
-      <div className="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none">
-        {toasts.map((t) => (
-          <div
-            key={t.id}
-            className="pointer-events-auto flex items-start gap-3 rounded-2xl bg-[#0f2c1d] text-white p-4 shadow-2xl border border-[#1e4d33] animate-slideIn"
-          >
-            <CheckCircle2 className="w-5 h-5 text-[#f5b82e] shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <span className="text-sm font-bold block">{t.title}</span>
-              {t.description && (
-                <span className="text-xs text-[#b9d8c5]">{t.description}</span>
-              )}
-            </div>
-            <button
-              onClick={() => dismissToast(t.id)}
-              className="text-[#789d87] hover:text-white cursor-pointer"
-            >
-              <X className="w-4 h-4" />
-            </button>
+      {coupons.length > 0 && (
+        <HomeSection
+          eyebrow="Offers"
+          title="Coupons for your basket"
+          subtitle="Copy a code and apply it at checkout."
+          href="/deals"
+          hrefLabel="See all offers"
+        >
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {coupons.slice(0, 3).map((c) => (
+              <CouponCard key={c.code} coupon={c} />
+            ))}
           </div>
-        ))}
+        </HomeSection>
+      )}
+
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <RecentlyViewed className="py-10" />
       </div>
-    </div>
+
+      <WhyChooseUsSection />
+      <TestimonialsSection />
+    </>
   );
 }
