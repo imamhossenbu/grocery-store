@@ -60,6 +60,7 @@ Checked by the agent that built it (not re-checked by the lead):
 Only type-checked, linted and built — **nobody has looked at these on screen yet**:
 - The whole rebuilt admin panel when signed in (only `/login` was seen). The alignment fixes requested from screenshots (KPI cards, "Orders by status" card, orders toolbar and table headers, bell badge, avatar initials) are in the code but unconfirmed.
 - The storefront sweep (custom sort select, price slider, mobile filter sheet, pagination, product tabs, cart drawer, FAQ accordion, new skeletons).
+- The `loading.tsx` skeletons for `/wishlist`, `/deals`, `/checkout`, `/order/[id]` and `/track-order` (added 13 Nov 2026).
 
 Never tested:
 - A full SSLCommerz sandbox payment (init call works; success/fail/cancel callbacks and IPN were only tested with fake data).
@@ -79,7 +80,6 @@ Never tested:
 Storefront
 - Header search: keyboard shortcut hint and animated suggestions panel.
 - Readable-typography pass is partial: home sections, `ProductCard`, category/deals/info pages, `Breadcrumbs`, `SectionHeader`, `EmptyState` still use light greys and 11–12px text.
-- `/wishlist`, `/deals`, `/checkout`, `/order/[id]` and `/track-order` have no `loading.tsx`; while loading they show the root skeleton, which is shaped like the home page (wrong shape for them).
 - Checkout still offers same-day slots to districts outside Dhaka (only the note text changes).
 - `OtpVerifyForm` now uses the kit's `OtpInput`; forgot/reset password forms were not restyled.
 - Forms are hand-validated; `react-hook-form`/`zod` were not adopted in the storefront.
@@ -89,7 +89,7 @@ Admin
 - Dark mode.
 - Some badges and help text are still 12px.
 - Message read/unread is stored per browser (no DB column).
-- The old unused `GET /api/store` is still there.
+- `readStore()` in `src/lib/supabase-db.ts` has no callers now that `GET /api/store` is removed; delete it with its unused helpers.
 
 ## Known issues
 
