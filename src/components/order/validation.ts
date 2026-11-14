@@ -43,6 +43,8 @@ export const LIMITS = {
  */
 export interface ValidationContext {
   unionOptional?: boolean;
+  /** Outside Dhaka district: courier delivery, no day or slot to choose. */
+  courier?: boolean;
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -106,9 +108,11 @@ export function validateField(field: CheckoutField, v: CheckoutInput, ctx: Valid
       if (v.postcode && !/^\d{4}$/.test(v.postcode)) return 'Post codes in Bangladesh have 4 digits.';
       return;
     case 'slot':
+      if (ctx.courier) return;
       if (!findSlot(v.slot)) return 'Please choose a delivery slot.';
       return;
     case 'day':
+      if (ctx.courier) return;
       if (!(DELIVERY_DAYS as readonly string[]).includes(v.day)) return 'Please choose a delivery day.';
       return;
     case 'notes':

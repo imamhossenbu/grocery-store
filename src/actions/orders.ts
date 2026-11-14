@@ -13,8 +13,9 @@ import { toCoupon } from '@/lib/data/mappers';
 import { discountFor } from '@/lib/pricing';
 import { formatBDT, normalizePhone } from '@/lib/format';
 import { asDeliveryDay, readCheckoutInput, validateCheckout } from '@/components/order/validation';
-import { deliverySlotText, isSlotAvailable } from '@/components/order/delivery';
+import { COURIER_DELIVERY_TEXT, deliverySlotText, isSlotAvailable } from '@/components/order/delivery';
 import { resolveAddress } from '@/lib/address/geo';
+import { DHAKA_DISTRICT_ID } from '@/lib/address/types';
 import { formatAddress, formatLocality } from '@/lib/address/format';
 import type {
   CartLine,
@@ -264,13 +265,15 @@ export async function placeOrder(_prev: PlaceOrderState, formData: FormData): Pr
   // district → upazila/thana → union must exist and belong together. Whether
   // the union is required (upazila) or optional free text (city thana) is
   // decided by the dataset, not the client.
-  const fieldErrors = validateCheckout(values, { unionOptional: true });
+  // Outside Dhaka district goes by courier: no day or slot to check.
+  const courier = !!values.district && values.district !== DHAKA_DISTRICT_ID;
+  const fieldErrors = validateCheckout(values, { unionOptional: true, courier });
   const place = resolveAddress(values);
   if (!place.ok) {
     for (const [f, msg] of Object.entries(place.errors) as [keyof typeof place.errors, string][]) fieldErrors[f] ??= msg;
   }
   const day = asDeliveryDay(values.day);
-  if (!fieldErrors.slot && !fieldErrors.day && !isSlotAvailable(values.slot, day, now)) {
+  if (!courier && !fieldErrors.slot && !fieldErrors.day && !isSlotAvailable(values.slot, day, now)) {
     fieldErrors.slot = 'That slot is no longer available today. Please pick a later slot or tomorrow.';
   }
   if (Object.keys(fieldErrors).length > 0 || !place.ok) {
@@ -326,7 +329,7 @@ export async function placeOrder(_prev: PlaceOrderState, formData: FormData): Pr
     union: where.union,
     landmark: values.landmark,
     postcode: values.postcode,
-    deliverySlot: deliverySlotText(values.slot, day, now),
+    deliverySlot: courier ? COURIER_DELIVERY_TEXT : deliverySlotText(values.slot, day, now),
     notes: values.notes,
   };
 

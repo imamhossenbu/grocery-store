@@ -43,6 +43,12 @@ export function deliveryDateLabel(day: DeliveryDay, nowMs: number): string {
   return DAY_LABEL.format(new Date(Date.UTC(y, m, d + (day === 'tomorrow' ? 1 : 0))));
 }
 
+/**
+ * Outside Dhaka district orders go by courier, so there is no slot to pick.
+ * Stored in orders.delivery_slot in place of a slot.
+ */
+export const COURIER_DELIVERY_TEXT = 'Courier delivery · 2–4 days';
+
 /** The text stored in orders.delivery_slot, e.g. "Morning (8:00 AM – 11:00 AM) · Tomorrow, Fri, 13 Nov". */
 export function deliverySlotText(slotId: string, day: DeliveryDay, nowMs: number): string {
   return `${slotId} · ${day === 'today' ? 'Today' : 'Tomorrow'}, ${deliveryDateLabel(day, nowMs)}`;

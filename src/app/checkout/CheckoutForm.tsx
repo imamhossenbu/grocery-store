@@ -16,6 +16,7 @@ import {
   Phone,
   ShoppingBasket,
   Smartphone,
+  Truck,
   UserRound,
 } from 'lucide-react';
 import { useShop } from '@/context/ShopContext';
@@ -172,7 +173,7 @@ export function CheckoutForm({ live, signedIn, email, profile, coupons, onlinePa
 
   const errorFor = (f: CheckoutField) => serverErrors[f] ?? (touched[f] ? clientErrors[f] : undefined);
 
-  const ctx = { unionOptional: localityKind === 'thana' };
+  const ctx = { unionOptional: localityKind === 'thana', courier: outsideDhaka };
 
   const update = (f: CheckoutField, v: string) => {
     const next = { ...values, [f]: v };
@@ -194,7 +195,7 @@ export function CheckoutForm({ live, signedIn, email, profile, coupons, onlinePa
     const changed = ADDRESS_FIELDS.filter((f) => values[f] !== next[f]);
     if (!changed.length) return;
     setValues(next);
-    const c = { unionOptional: kind === 'thana' };
+    const c = { unionOptional: kind === 'thana', courier: !!next.district && next.district !== DHAKA_DISTRICT_ID };
     setClientErrors((e) => {
       const out = { ...e };
       for (const f of ADDRESS_FIELDS) if (touched[f] || e[f]) out[f] = validateField(f, next, c);
@@ -215,7 +216,7 @@ export function CheckoutForm({ live, signedIn, email, profile, coupons, onlinePa
 
     const effective = { ...values, day, slot };
     const errs = validateCheckout(effective, ctx);
-    if (!errs.slot && now !== null && !isSlotAvailable(slot, day, now)) {
+    if (!outsideDhaka && !errs.slot && now !== null && !isSlotAvailable(slot, day, now)) {
       errs.slot = 'That slot is no longer available today. Please pick another slot or tomorrow.';
     }
     setTouched(Object.fromEntries(FIELD_ORDER.map((f) => [f, true])));
@@ -468,76 +469,91 @@ export function CheckoutForm({ live, signedIn, email, profile, coupons, onlinePa
           </Section>
 
           <Section step={3} title="Delivery time" icon={<CalendarDays className="h-5 w-5" aria-hidden />}>
-            <fieldset>
-              <legend className="text-sm font-bold text-[#112a1d]">Day</legend>
-              <div className="mt-2 grid grid-cols-2 gap-3">
-                {DELIVERY_DAYS.map((d) => {
-                  const anyOpen = now === null || DELIVERY_SLOTS.some((s) => isSlotAvailable(s.id, d, now));
-                  return (
-                    <label
-                      key={d}
-                      className={`relative flex cursor-pointer flex-col rounded-2xl border-2 px-4 py-3 transition has-focus-visible:ring-2 has-focus-visible:ring-[#1a663b]/40 ${
-                        day === d ? 'border-[#1a663b] bg-[#f0f9f3]' : 'border-[#dfece3] bg-white hover:border-[#9ac7ac]'
-                      } ${!anyOpen ? 'cursor-not-allowed opacity-50' : ''}`}
-                    >
-                      <input
-                        type="radio"
-                        name="day"
-                        value={d}
-                        checked={day === d}
-                        disabled={!anyOpen}
-                        onChange={() => {
-                          setValues((v) => ({ ...v, day: d, slot: now !== null && v.slot && !isSlotAvailable(v.slot, d, now) ? '' : v.slot }));
-                          setServerErrors((e) => ({ ...e, day: undefined, slot: undefined }));
-                          setClientErrors((e) => ({ ...e, day: undefined, slot: undefined }));
-                        }}
-                        className="sr-only"
-                      />
-                      <span className="text-sm font-extrabold capitalize text-[#112a1d]">{d}</span>
-                      <span className="text-xs text-[#5a7165]">
-                        {now === null ? ' ' : anyOpen ? deliveryDateLabel(d, now) : 'All slots closed'}
-                      </span>
-                    </label>
-                  );
-                })}
+            {outsideDhaka ? (
+              <div className="flex items-start gap-3 rounded-2xl border border-[#d5eadc] bg-[#f4f9f5] p-4 text-sm text-[#14522f]">
+                <Truck className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
+                <div>
+                  <p className="font-bold">Courier delivery in 2–4 days</p>
+                  <p className="mt-0.5 text-[#3f5649]">
+                    Same-day slots are for Dhaka district only. We ship your order by courier for a flat{' '}
+                    {formatBDT(OUTSIDE_DHAKA_DELIVERY_FEE)} and call you before it leaves.
+                  </p>
+                </div>
               </div>
-              {errorFor('day') && <p className="mt-1.5 text-xs font-semibold text-red-600" role="alert">{errorFor('day')}</p>}
-            </fieldset>
+            ) : (
+              <>
+                <fieldset>
+                  <legend className="text-sm font-bold text-[#112a1d]">Day</legend>
+                  <div className="mt-2 grid grid-cols-2 gap-3">
+                    {DELIVERY_DAYS.map((d) => {
+                      const anyOpen = now === null || DELIVERY_SLOTS.some((s) => isSlotAvailable(s.id, d, now));
+                      return (
+                        <label
+                          key={d}
+                          className={`relative flex cursor-pointer flex-col rounded-2xl border-2 px-4 py-3 transition has-focus-visible:ring-2 has-focus-visible:ring-[#1a663b]/40 ${
+                            day === d ? 'border-[#1a663b] bg-[#f0f9f3]' : 'border-[#dfece3] bg-white hover:border-[#9ac7ac]'
+                          } ${!anyOpen ? 'cursor-not-allowed opacity-50' : ''}`}
+                        >
+                          <input
+                            type="radio"
+                            name="day"
+                            value={d}
+                            checked={day === d}
+                            disabled={!anyOpen}
+                            onChange={() => {
+                              setValues((v) => ({ ...v, day: d, slot: now !== null && v.slot && !isSlotAvailable(v.slot, d, now) ? '' : v.slot }));
+                              setServerErrors((e) => ({ ...e, day: undefined, slot: undefined }));
+                              setClientErrors((e) => ({ ...e, day: undefined, slot: undefined }));
+                            }}
+                            className="sr-only"
+                          />
+                          <span className="text-sm font-extrabold capitalize text-[#112a1d]">{d}</span>
+                          <span className="text-xs text-[#5a7165]">
+                            {now === null ? ' ' : anyOpen ? deliveryDateLabel(d, now) : 'All slots closed'}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  {errorFor('day') && <p className="mt-1.5 text-xs font-semibold text-red-600" role="alert">{errorFor('day')}</p>}
+                </fieldset>
 
-            <fieldset className="mt-5" aria-describedby={errorFor('slot') ? 'slot-error' : undefined}>
-              <legend className="text-sm font-bold text-[#112a1d]">Time slot</legend>
-              <div className="mt-2 grid gap-3 sm:grid-cols-3">
-                {DELIVERY_SLOTS.map((s) => {
-                  const available = now === null || isSlotAvailable(s.id, day, now);
-                  const selected = slot === s.id && available;
-                  return (
-                    <label
-                      key={s.id}
-                      className={`relative flex cursor-pointer items-center justify-between gap-2 rounded-2xl border-2 px-4 py-3 transition has-focus-visible:ring-2 has-focus-visible:ring-[#1a663b]/40 sm:flex-col sm:items-start ${
-                        selected ? 'border-[#1a663b] bg-[#f0f9f3] shadow-soft' : 'border-[#dfece3] bg-white hover:border-[#9ac7ac]'
-                      } ${!available ? 'cursor-not-allowed opacity-50' : ''}`}
-                    >
-                      <input
-                        type="radio"
-                        name="slot"
-                        value={s.id}
-                        checked={selected}
-                        disabled={!available}
-                        onChange={() => {
-                          setValues((v) => ({ ...v, slot: s.id }));
-                          setServerErrors((e) => ({ ...e, slot: undefined }));
-                          setClientErrors((e) => ({ ...e, slot: undefined }));
-                        }}
-                        className="sr-only"
-                      />
-                      <span className="text-sm font-extrabold text-[#112a1d]">{s.label}</span>
-                      <span className="text-xs font-semibold text-[#5a7165]">{available ? s.time : 'Closed for today'}</span>
-                    </label>
-                  );
-                })}
-              </div>
-              {errorFor('slot') && <p id="slot-error" className="mt-1.5 text-xs font-semibold text-red-600" role="alert">{errorFor('slot')}</p>}
-            </fieldset>
+                <fieldset className="mt-5" aria-describedby={errorFor('slot') ? 'slot-error' : undefined}>
+                  <legend className="text-sm font-bold text-[#112a1d]">Time slot</legend>
+                  <div className="mt-2 grid gap-3 sm:grid-cols-3">
+                    {DELIVERY_SLOTS.map((s) => {
+                      const available = now === null || isSlotAvailable(s.id, day, now);
+                      const selected = slot === s.id && available;
+                      return (
+                        <label
+                          key={s.id}
+                          className={`relative flex cursor-pointer items-center justify-between gap-2 rounded-2xl border-2 px-4 py-3 transition has-focus-visible:ring-2 has-focus-visible:ring-[#1a663b]/40 sm:flex-col sm:items-start ${
+                            selected ? 'border-[#1a663b] bg-[#f0f9f3] shadow-soft' : 'border-[#dfece3] bg-white hover:border-[#9ac7ac]'
+                          } ${!available ? 'cursor-not-allowed opacity-50' : ''}`}
+                        >
+                          <input
+                            type="radio"
+                            name="slot"
+                            value={s.id}
+                            checked={selected}
+                            disabled={!available}
+                            onChange={() => {
+                              setValues((v) => ({ ...v, slot: s.id }));
+                              setServerErrors((e) => ({ ...e, slot: undefined }));
+                              setClientErrors((e) => ({ ...e, slot: undefined }));
+                            }}
+                            className="sr-only"
+                          />
+                          <span className="text-sm font-extrabold text-[#112a1d]">{s.label}</span>
+                          <span className="text-xs font-semibold text-[#5a7165]">{available ? s.time : 'Closed for today'}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  {errorFor('slot') && <p id="slot-error" className="mt-1.5 text-xs font-semibold text-red-600" role="alert">{errorFor('slot')}</p>}
+                </fieldset>
+              </>
+            )}
           </Section>
 
           <Section step={4} title="Payment" icon={<Banknote className="h-5 w-5" aria-hidden />}>
