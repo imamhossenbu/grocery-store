@@ -3,10 +3,10 @@ import { ArrowRight, Banknote, Clock, Leaf, ShieldCheck, Truck } from 'lucide-re
 import { SearchBar } from '@/components/store-ui/SearchBar';
 import type { Category, Product } from '@/types/store';
 import { formatBDT } from '@/lib/format';
-import { FREE_DELIVERY_THRESHOLD, discountPercent } from '@/lib/pricing';
+import { discountPercent, freeDeliveryLine, type DeliverySettings } from '@/lib/pricing';
 import { POPULAR_SEARCHES } from '@/lib/constants';
 
-export function Hero({ categories, spotlight }: { categories: Category[]; spotlight?: Product }) {
+export function Hero({ categories, spotlight, delivery }: { categories: Category[]; spotlight?: Product; delivery: DeliverySettings }) {
   const tiles = categories.slice(0, 3);
   const pct = spotlight ? discountPercent(spotlight.price, spotlight.oldPrice) : 0;
 
@@ -56,7 +56,7 @@ export function Hero({ categories, spotlight }: { categories: Category[]; spotli
 
           <ul className="mt-10 grid max-w-xl grid-cols-1 gap-3 text-sm sm:grid-cols-3">
             {[
-              { icon: Truck, text: `Free delivery over ${formatBDT(FREE_DELIVERY_THRESHOLD)}` },
+              { icon: Truck, text: freeDeliveryLine(delivery, 'in Dhaka') ?? 'Same-day delivery in Dhaka' },
               { icon: Banknote, text: 'Cash on delivery' },
               { icon: ShieldCheck, text: 'Freshness guarantee' },
             ].map(({ icon: Icon, text }) => (

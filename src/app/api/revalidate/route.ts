@@ -10,11 +10,14 @@ import { requireRevalidateSecret } from '@/lib/bearer';
  *     -d '{"tags":["reviews:mango-himsagar"]}'      # body optional
  *
  * Always refreshes the 'catalog' tag (products, categories, coupons). The
- * optional body may add `reviews:<productId>` tags. Uses stale-while-revalidate
- * ('max'): visitors get the cached page while fresh data loads in the background.
+ * optional body may add `reviews:<productId>` tags and `settings` (delivery
+ * charges). Catalog and review tags use stale-while-revalidate ('max'):
+ * visitors get the cached page while fresh data loads in the background.
+ * `settings` expires at once, so no shopper sees an old delivery fee that
+ * place_order() would no longer charge.
  */
 
-const EXTRA_TAG_RE = /^reviews:[A-Za-z0-9_-]{1,80}$/;
+const EXTRA_TAG_RE = /^(reviews:[A-Za-z0-9_-]{1,80}|settings)$/;
 
 export async function POST(request: Request) {
   const denied = requireRevalidateSecret(request);
@@ -32,6 +35,6 @@ export async function POST(request: Request) {
     }
   }
 
-  for (const tag of tags) revalidateTag(tag, 'max');
+  for (const tag of tags) revalidateTag(tag, tag === 'settings' ? { expire: 0 } : 'max');
   return Response.json({ ok: true, revalidated: [...tags], at: new Date().toISOString() }, { headers: { 'Cache-Control': 'no-store' } });
 }

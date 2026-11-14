@@ -4,13 +4,17 @@ import { Banknote, Clock, MapPin, PackageCheck, PhoneCall, Truck } from 'lucide-
 import { InfoBody, InfoHero, SupportCard } from '@/components/info/InfoLayout';
 import { DELIVERY_SLOTS, DHAKA_AREAS } from '@/lib/constants';
 import { formatBDT } from '@/lib/format';
-import { DELIVERY_FEE, FREE_DELIVERY_THRESHOLD, OUTSIDE_DHAKA_DELIVERY_FEE } from '@/lib/pricing';
+import { dhakaFeeSentence, outsideFeeSentence } from '@/lib/pricing';
+import { getDeliverySettings } from '@/lib/data/settings';
 
-export const metadata: Metadata = {
-  title: 'Delivery information',
-  description: `Same-day grocery delivery across Dhaka in three slots: 8–11 AM, 1–4 PM and 5–8 PM. Free delivery over ${formatBDT(FREE_DELIVERY_THRESHOLD)}, otherwise ${formatBDT(DELIVERY_FEE)}. Cash on delivery.`,
-  alternates: { canonical: '/delivery' },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const delivery = await getDeliverySettings();
+  return {
+    title: 'Delivery information',
+    description: `Same-day grocery delivery across Dhaka in three slots: 8–11 AM, 1–4 PM and 5–8 PM. Delivery in Dhaka is ${dhakaFeeSentence(delivery)}. Cash on delivery.`,
+    alternates: { canonical: '/delivery' },
+  };
+}
 
 const STEPS = [
   { icon: PackageCheck, title: 'You order', text: 'Choose your groceries and a delivery slot. We confirm your order by SMS or a quick call.' },
@@ -19,14 +23,16 @@ const STEPS = [
   { icon: Banknote, title: 'Check, then pay', text: 'Look over your items, hand back anything not up to standard, and pay the rider in cash.' },
 ];
 
-export default function DeliveryPage() {
+export default async function DeliveryPage() {
+  const delivery = await getDeliverySettings();
+  const freeFrom = delivery.dhakaFreeFrom !== null && delivery.dhakaFreeFrom > 0 && delivery.dhakaFee > 0 ? delivery.dhakaFreeFrom : null;
   return (
     <>
       <InfoHero
         crumb="Delivery information"
         eyebrow="Delivery"
         title="Same-day delivery across Dhaka"
-        intro={<>Pick a slot that suits you and we’ll bring your groceries the same day. Inside Dhaka, delivery is <strong>free over {formatBDT(FREE_DELIVERY_THRESHOLD)}</strong> and a flat {formatBDT(DELIVERY_FEE)} below that. Outside Dhaka we ship by courier in 2–4 days for a flat <strong>{formatBDT(OUTSIDE_DHAKA_DELIVERY_FEE)}</strong>.</>}
+        intro={<>Pick a slot that suits you and we’ll bring your groceries the same day. Inside Dhaka, delivery is <strong>{dhakaFeeSentence(delivery)}</strong>. Outside Dhaka we ship by courier in 2–4 days: <strong>{outsideFeeSentence(delivery)}</strong>.</>}
       />
       <InfoBody className="space-y-14">
         <section aria-labelledby="slots">
@@ -46,17 +52,27 @@ export default function DeliveryPage() {
           </p>
         </section>
 
-        <section aria-labelledby="charges" className="grid gap-4 sm:grid-cols-2">
+        <section aria-labelledby="charges" className="grid gap-4 sm:grid-cols-3">
           <h2 id="charges" className="sr-only">Delivery charges</h2>
-          <div className="rounded-3xl bg-forest-gradient p-6 text-white shadow-card">
-            <p className="text-xs font-bold uppercase tracking-widest text-[#9fd8b5]">Orders of {formatBDT(FREE_DELIVERY_THRESHOLD)} or more</p>
-            <p className="mt-2 font-display text-4xl font-bold text-[#f5b82e]">Free delivery</p>
-            <p className="mt-2 text-sm text-[#b9d8c5]">Calculated on your item total after any coupon discount is applied.</p>
+          {freeFrom !== null && (
+            <div className="rounded-3xl bg-forest-gradient p-6 text-white shadow-card">
+              <p className="text-xs font-bold uppercase tracking-widest text-[#9fd8b5]">Dhaka · orders of {formatBDT(freeFrom)} or more</p>
+              <p className="mt-2 font-display text-4xl font-bold text-[#f5b82e]">Free delivery</p>
+              <p className="mt-2 text-sm text-[#b9d8c5]">Calculated on your item total before any coupon discount.</p>
+            </div>
+          )}
+          <div className="rounded-3xl border border-[#dfece3] bg-white p-6 shadow-soft">
+            <p className="text-xs font-bold uppercase tracking-widest text-[#5a7165]">{freeFrom !== null ? `Dhaka · orders under ${formatBDT(freeFrom)}` : 'Inside Dhaka'}</p>
+            <p className="mt-2 font-display text-4xl font-bold text-[#112a1d]">{delivery.dhakaFee > 0 ? formatBDT(delivery.dhakaFee) : 'Free'}</p>
+            <p className="mt-2 text-sm text-[#5a7165]">One flat charge anywhere in Dhaka district. No surge pricing, no small-order fee.</p>
           </div>
           <div className="rounded-3xl border border-[#dfece3] bg-white p-6 shadow-soft">
-            <p className="text-xs font-bold uppercase tracking-widest text-[#5a7165]">Orders under {formatBDT(FREE_DELIVERY_THRESHOLD)}</p>
-            <p className="mt-2 font-display text-4xl font-bold text-[#112a1d]">{formatBDT(DELIVERY_FEE)}</p>
-            <p className="mt-2 text-sm text-[#5a7165]">One flat charge anywhere in Dhaka. No surge pricing, no small-order fee.</p>
+            <p className="text-xs font-bold uppercase tracking-widest text-[#5a7165]">Outside Dhaka · courier</p>
+            <p className="mt-2 font-display text-4xl font-bold text-[#112a1d]">{delivery.outsideFee > 0 ? formatBDT(delivery.outsideFee) : 'Free'}</p>
+            <p className="mt-2 text-sm text-[#5a7165]">
+              Delivered in 2–4 days to every other district
+              {delivery.outsideFreeFrom !== null && delivery.outsideFee > 0 ? `, free on orders of ${formatBDT(delivery.outsideFreeFrom)} or more` : ''}.
+            </p>
           </div>
         </section>
 

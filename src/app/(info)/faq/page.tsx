@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Accordion } from '@/components/ui/Accordion';
-import { FAQ_GROUPS } from '@/components/info/faq-data';
+import { faqGroups } from '@/components/info/faq-data';
+import { getDeliverySettings } from '@/lib/data/settings';
 import { InfoBody, InfoHero, JsonLd, SupportCard } from '@/components/info/InfoLayout';
 
 export const metadata: Metadata = {
@@ -9,7 +10,8 @@ export const metadata: Metadata = {
   alternates: { canonical: '/faq' },
 };
 
-export default function FaqPage() {
+export default async function FaqPage() {
+  const FAQ_GROUPS = faqGroups(await getDeliverySettings());
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'FAQPage',

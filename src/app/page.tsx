@@ -16,6 +16,7 @@ import { RecentlyViewed } from '@/components/product/RecentlyViewed';
 import { JsonLd } from '@/components/product/JsonLd';
 import { CouponCard } from '@/components/shop/CouponCard';
 import { Hero } from '@/components/home/Hero';
+import { getDeliverySettings } from '@/lib/data/settings';
 import { CategoryGrid } from '@/components/home/CategoryGrid';
 import { DealCountdown } from '@/components/home/DealCountdown';
 import { HomeSection } from '@/components/home/HomeSection';
@@ -27,13 +28,14 @@ export const metadata: Metadata = {
 };
 
 export default async function HomePage() {
-  const [categories, featured, deals, bestSellers, newArrivals, coupons] = await Promise.all([
+  const [categories, featured, deals, bestSellers, newArrivals, coupons, delivery] = await Promise.all([
     getTopCategories(),
     getFeaturedProducts(8),
     getDeals(8),
     getBestSellers(4),
     getNewArrivals(4),
     getPublicCoupons(),
+    getDeliverySettings(),
   ]);
   const biggestDeal = deals[0] ? discountPercent(deals[0].price, deals[0].oldPrice) : 0;
 
@@ -59,7 +61,7 @@ export default async function HomePage() {
         }}
       />
 
-      <Hero categories={categories} spotlight={deals[0] ?? featured[0]} />
+      <Hero categories={categories} spotlight={deals[0] ?? featured[0]} delivery={delivery} />
 
       <HomeSection
         eyebrow="Shop by aisle"

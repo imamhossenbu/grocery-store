@@ -32,7 +32,7 @@ import type { PlaceOrderState } from '@/components/order/types';
 import { DELIVERY_SLOTS, SUPPORT_PHONE } from '@/lib/constants';
 import { AddressPicker, type AddressErrorField, type AddressErrors } from '@/components/address/AddressPicker';
 import { DHAKA_DISTRICT_ID, type AddressValue, type GeoIndex, type LocalityKind } from '@/lib/address/types';
-import { OUTSIDE_DHAKA_DELIVERY_FEE, deliveryFeeFor } from '@/lib/pricing';
+import { deliveryFeeFor, outsideFeeSentence } from '@/lib/pricing';
 import { formatBDT } from '@/lib/format';
 import type { Coupon, Profile } from '@/types/store';
 import { CheckoutSkeleton } from './CheckoutSkeleton';
@@ -72,7 +72,7 @@ type PaymentChoice = 'cod' | 'sslcommerz';
 
 export function CheckoutForm({ live, signedIn, email, profile, coupons, onlinePayment, geo }: Props) {
   const router = useRouter();
-  const { hydrated, cart, cartCount, subtotal, discount, coupon, setCoupon, clearCart, toast } = useShop();
+  const { hydrated, cart, cartCount, subtotal, discount, coupon, setCoupon, clearCart, toast, delivery } = useShop();
   const { checking, notices, dismissNotices } = useCartSync();
   const [state, formAction, pending] = useActionState(placeOrder, INITIAL);
   const now = useSyncExternalStore(subscribeMinute, getMinute, getServerMinute);
@@ -94,7 +94,7 @@ export function CheckoutForm({ live, signedIn, email, profile, coupons, onlinePa
   }));
   // The basket shows the Dhaka fee; once a district is chosen the fee follows it.
   const outsideDhaka = !!values.district && values.district !== DHAKA_DISTRICT_ID;
-  const deliveryFee = deliveryFeeFor(subtotal, { outsideDhaka });
+  const deliveryFee = deliveryFeeFor(subtotal, delivery, { outsideDhaka });
   const total = Math.max(0, subtotal - discount + deliveryFee);
   const [clientErrors, setClientErrors] = useState<FieldErrors>({});
   const [touched, setTouched] = useState<Partial<Record<CheckoutField, boolean>>>({});
@@ -475,8 +475,8 @@ export function CheckoutForm({ live, signedIn, email, profile, coupons, onlinePa
                 <div>
                   <p className="font-bold">Courier delivery in 2–4 days</p>
                   <p className="mt-0.5 text-[#3f5649]">
-                    Same-day slots are for Dhaka district only. We ship your order by courier for a flat{' '}
-                    {formatBDT(OUTSIDE_DHAKA_DELIVERY_FEE)} and call you before it leaves.
+                    Same-day slots are for Dhaka district only. Courier delivery is {outsideFeeSentence(delivery)}; we call you
+                    before it leaves.
                   </p>
                 </div>
               </div>
@@ -606,7 +606,7 @@ export function CheckoutForm({ live, signedIn, email, profile, coupons, onlinePa
       <aside aria-label="Order summary" className="hidden lg:block lg:sticky lg:top-44 space-y-4">
         {outsideDhaka ? (
           <p className="rounded-2xl border border-[#d5eadc] bg-[#f4f9f5] p-4 text-sm font-semibold text-[#14522f]">
-            Courier delivery outside Dhaka is a flat {formatBDT(OUTSIDE_DHAKA_DELIVERY_FEE)}.
+            Courier delivery outside Dhaka is {outsideFeeSentence(delivery)}.
           </p>
         ) : (
           <FreeDeliveryProgress subtotal={subtotal} />

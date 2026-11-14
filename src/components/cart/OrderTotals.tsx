@@ -1,10 +1,38 @@
-import { Truck } from 'lucide-react';
-import { formatBDT } from '@/lib/format';
-import { FREE_DELIVERY_THRESHOLD, OUTSIDE_DHAKA_DELIVERY_FEE } from '@/lib/pricing';
+'use client';
 
+import { Truck } from 'lucide-react';
+import { useShop } from '@/context/ShopContext';
+import { formatBDT } from '@/lib/format';
+import { outsideFeeSentence } from '@/lib/pricing';
+
+/** Progress towards free Dhaka delivery (admin-set threshold), or the flat fee when there is none. */
 export function FreeDeliveryProgress({ subtotal }: { subtotal: number }) {
-  const remaining = Math.max(0, FREE_DELIVERY_THRESHOLD - subtotal);
-  const progress = Math.min(100, Math.round((subtotal / FREE_DELIVERY_THRESHOLD) * 100));
+  const { delivery } = useShop();
+  const freeFrom = delivery.dhakaFreeFrom;
+  const outsideNote = <p className="mt-2 text-[13px] text-[#3f5649]">Inside Dhaka. Outside Dhaka, courier delivery is {outsideFeeSentence(delivery)}.</p>;
+
+  if (freeFrom === null || freeFrom <= 0 || delivery.dhakaFee <= 0) {
+    return (
+      <div className="rounded-2xl border border-[#d5eadc] bg-[#f4f9f5] p-4">
+        <p className="flex items-center gap-2 text-sm font-semibold text-[#14522f]">
+          <Truck className="h-4 w-4 shrink-0" aria-hidden />
+          {delivery.dhakaFee > 0 && freeFrom === null ? (
+            <span>
+              Delivery in Dhaka is a flat <strong className="font-extrabold">{formatBDT(delivery.dhakaFee)}</strong>
+            </span>
+          ) : (
+            <span>
+              <strong className="font-extrabold">Free delivery</strong> in Dhaka
+            </span>
+          )}
+        </p>
+        {outsideNote}
+      </div>
+    );
+  }
+
+  const remaining = Math.max(0, freeFrom - subtotal);
+  const progress = Math.min(100, Math.round((subtotal / freeFrom) * 100));
   return (
     <div className="rounded-2xl border border-[#d5eadc] bg-[#f4f9f5] p-4">
       <p className="flex items-center gap-2 text-sm font-semibold text-[#14522f]">
@@ -27,7 +55,7 @@ export function FreeDeliveryProgress({ subtotal }: { subtotal: number }) {
       >
         <div className="h-full rounded-full bg-emerald-gradient transition-all duration-500" style={{ width: `${progress}%` }} />
       </div>
-      <p className="mt-2 text-[13px] text-[#3f5649]">Inside Dhaka. Outside Dhaka, courier delivery is a flat {formatBDT(OUTSIDE_DHAKA_DELIVERY_FEE)}.</p>
+      {outsideNote}
     </div>
   );
 }

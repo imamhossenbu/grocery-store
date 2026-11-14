@@ -2,7 +2,7 @@
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { CartItem, Coupon, Product, ProductSnapshot } from '@/types/store';
-import { deliveryFeeFor, discountFor } from '@/lib/pricing';
+import { DEFAULT_DELIVERY, deliveryFeeFor, discountFor, type DeliverySettings } from '@/lib/pricing';
 
 /**
  * Client-side shopping state: cart, wishlist, recently viewed, applied coupon,
@@ -24,6 +24,8 @@ interface ShopContextValue {
   subtotal: number;
   discount: number;
   deliveryFee: number;
+  /** Delivery charges set in the admin panel (store_settings). */
+  delivery: DeliverySettings;
   total: number;
   coupon: Coupon | null;
   setCoupon: (c: Coupon | null) => void;
@@ -74,7 +76,7 @@ function save(key: string, value: unknown) {
   } catch {}
 }
 
-export function ShopProvider({ children }: { children: React.ReactNode }) {
+export function ShopProvider({ children, delivery = DEFAULT_DELIVERY }: { children: React.ReactNode; delivery?: DeliverySettings }) {
   const [hydrated, setHydrated] = useState(false);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [wishlist, setWishlist] = useState<ProductSnapshot[]>([]);
@@ -183,11 +185,12 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const cartCount = useMemo(() => cart.reduce((s, i) => s + i.qty, 0), [cart]);
   const subtotal = useMemo(() => cart.reduce((s, i) => s + i.price * i.qty, 0), [cart]);
   const discount = discountFor(coupon, subtotal);
-  const deliveryFee = deliveryFeeFor(subtotal);
+  // The basket assumes Dhaka; checkout switches once a district is chosen.
+  const deliveryFee = deliveryFeeFor(subtotal, delivery);
   const total = Math.max(0, subtotal - discount + deliveryFee);
 
   const value: ShopContextValue = {
-    hydrated, cart, cartCount, subtotal, discount, deliveryFee, total,
+    hydrated, cart, cartCount, subtotal, discount, deliveryFee, delivery, total,
     coupon, setCoupon: setCouponState,
     addToCart, setQty, removeFromCart, clearCart, getQty, syncCart,
     wishlist, isWishlisted, toggleWishlist,

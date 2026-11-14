@@ -3,7 +3,8 @@ import Link from 'next/link';
 import { InfoBody, InfoHero, Prose, Toc } from '@/components/info/InfoLayout';
 import { SUPPORT_EMAIL, SUPPORT_PHONE } from '@/lib/constants';
 import { formatBDT } from '@/lib/format';
-import { DELIVERY_FEE, FREE_DELIVERY_THRESHOLD } from '@/lib/pricing';
+import { dhakaFeeSentence } from '@/lib/pricing';
+import { getDeliverySettings } from '@/lib/data/settings';
 
 export const metadata: Metadata = {
   title: 'Terms of service',
@@ -24,7 +25,8 @@ const SECTIONS = [
   { id: 'law', label: 'Governing law and contact' },
 ];
 
-export default function TermsPage() {
+export default async function TermsPage() {
+  const delivery = await getDeliverySettings();
   return (
     <>
       <InfoHero
@@ -65,7 +67,7 @@ export default function TermsPage() {
 
             <h2 id="delivery">5. Delivery</h2>
             <p>
-              We deliver within Dhaka city on the same day in the slot you select: 8–11 AM, 1–4 PM or 5–8 PM. Delivery is free for orders of {formatBDT(FREE_DELIVERY_THRESHOLD)} or more; otherwise a flat charge of {formatBDT(DELIVERY_FEE)} applies. Slots are estimates — traffic, weather, hartals and public holidays can cause delays, and we will let you know. Someone aged 18 or over should be available to receive the order. See <Link href="/delivery">delivery information</Link> for details.
+              We deliver within Dhaka city on the same day in the slot you select: 8–11 AM, 1–4 PM or 5–8 PM. Delivery within Dhaka is {dhakaFeeSentence(delivery)}. Slots are estimates — traffic, weather, hartals and public holidays can cause delays, and we will let you know. Someone aged 18 or over should be available to receive the order. See <Link href="/delivery">delivery information</Link> for details.
             </p>
 
             <h2 id="payment">6. Payment</h2>

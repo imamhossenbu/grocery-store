@@ -1,4 +1,4 @@
-import { DELIVERY_FEE, FREE_DELIVERY_THRESHOLD, OUTSIDE_DHAKA_DELIVERY_FEE } from '@/lib/pricing';
+import { dhakaFeeSentence, outsideFeeSentence, type DeliverySettings } from '@/lib/pricing';
 import { SUPPORT_EMAIL, SUPPORT_PHONE } from '@/lib/constants';
 
 export interface FaqItem {
@@ -12,12 +12,14 @@ export interface FaqGroup {
   items: FaqItem[];
 }
 
-const fee = `৳${DELIVERY_FEE}`;
-const outsideFee = `৳${OUTSIDE_DHAKA_DELIVERY_FEE}`;
-const free = `৳${FREE_DELIVERY_THRESHOLD.toLocaleString('en-IN')}`;
-
-/** Plain-text answers so the same copy feeds the page and the FAQPage JSON-LD. */
-export const FAQ_GROUPS: FaqGroup[] = [
+/**
+ * Plain-text answers so the same copy feeds the page and the FAQPage JSON-LD.
+ * Delivery charges come from the admin's settings (getDeliverySettings()).
+ */
+export function faqGroups(delivery: DeliverySettings): FaqGroup[] {
+  const dhaka = dhakaFeeSentence(delivery);
+  const outside = outsideFeeSentence(delivery);
+  return [
   {
     id: 'ordering',
     title: 'Ordering',
@@ -28,7 +30,7 @@ export const FAQ_GROUPS: FaqGroup[] = [
       },
       {
         q: 'Is there a minimum order value?',
-        a: `There is no minimum. Inside Dhaka, orders under ${free} carry a ${fee} delivery charge and delivery is free from ${free} upwards. Outside Dhaka, courier delivery is a flat ${outsideFee} per order.`,
+        a: `There is no minimum. Inside Dhaka, delivery is ${dhaka}. Outside Dhaka, courier delivery is ${outside}.`,
       },
       {
         q: 'Can I change or cancel my order after placing it?',
@@ -58,7 +60,7 @@ export const FAQ_GROUPS: FaqGroup[] = [
       },
       {
         q: 'How much does delivery cost?',
-        a: `Delivery is free on orders of ${free} or more. Below that, a flat ${fee} is added at checkout, wherever you are in Dhaka.`,
+        a: `Inside Dhaka, delivery is ${dhaka}, wherever you are in the district. Outside Dhaka, courier delivery is ${outside}.`,
       },
       {
         q: 'How do I track my order?',
@@ -84,7 +86,7 @@ export const FAQ_GROUPS: FaqGroup[] = [
       },
       {
         q: 'Do you add any hidden charges?',
-        a: `No. The total you see at checkout — items, any discount and the ${fee} delivery charge where it applies — is exactly what you pay at the door.`,
+        a: `No. The total you see at checkout — items, any discount and the delivery charge where it applies — is exactly what you pay at the door.`,
       },
     ],
   },
@@ -128,4 +130,5 @@ export const FAQ_GROUPS: FaqGroup[] = [
       },
     ],
   },
-];
+  ];
+}

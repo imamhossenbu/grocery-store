@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { Banknote, HeartHandshake, Leaf, ShieldCheck, Sprout, Truck } from 'lucide-react';
 import { InfoBody, InfoHero, SupportCard } from '@/components/info/InfoLayout';
 import { formatBDT } from '@/lib/format';
-import { FREE_DELIVERY_THRESHOLD } from '@/lib/pricing';
+import { getDeliverySettings } from '@/lib/data/settings';
 
 export const metadata: Metadata = {
   title: 'About us',
@@ -18,7 +18,9 @@ const VALUES = [
   { icon: Banknote, title: 'Pay when it arrives', text: 'Cash on delivery for every order. You see your groceries before you pay, and the price at checkout is the price at your door.' },
 ];
 
-export default function AboutPage() {
+export default async function AboutPage() {
+  const { dhakaFreeFrom, dhakaFee } = await getDeliverySettings();
+  const freeOver = dhakaFreeFrom !== null && dhakaFreeFrom > 0 && dhakaFee > 0 ? formatBDT(dhakaFreeFrom) : null;
   return (
     <>
       <InfoHero
@@ -38,7 +40,7 @@ export default function AboutPage() {
               We buy directly where we can, pay farmers fairly and on time, and run a single hub in Dhaka where everything is checked, cleaned where needed, and packed to order. Shorter supply chains mean fresher food for you and a better price for the people who grow it.
             </p>
             <p>
-              Today we deliver across Dhaka — from Uttara to Old Dhaka — in three daily slots, with free delivery on orders over {formatBDT(FREE_DELIVERY_THRESHOLD)}.
+              Today we deliver across Dhaka — from Uttara to Old Dhaka — in three daily slots{freeOver ? `, with free delivery on orders over ${freeOver}` : ''}.
             </p>
           </div>
           <div className="grid grid-cols-2 gap-4">

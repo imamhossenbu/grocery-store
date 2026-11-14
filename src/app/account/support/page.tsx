@@ -3,7 +3,8 @@ import Link from 'next/link';
 import { Suspense } from 'react';
 import { ArrowRight, BookOpen, Mail, MessageSquareText, PackageSearch, Phone } from 'lucide-react';
 import { ContactForm } from '@/components/info/ContactForm';
-import { FAQ_GROUPS } from '@/components/info/faq-data';
+import { faqGroups } from '@/components/info/faq-data';
+import { getDeliverySettings } from '@/lib/data/settings';
 import { Accordion } from '@/components/ui/Accordion';
 import { SupportHeader } from '@/components/account/dashboard/headers';
 import { Panel } from '@/components/account/dashboard/PageHeader';
@@ -16,11 +17,14 @@ export const metadata: Metadata = { title: 'Help & support' };
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
-const FAQ_PICKS = FAQ_GROUPS.filter((g) => ['ordering', 'delivery', 'payment', 'returns'].includes(g.id))
+async function faqPicks() {
+  return faqGroups(await getDeliverySettings()).filter((g) => ['ordering', 'delivery', 'payment', 'returns'].includes(g.id))
   .flatMap((g) => g.items.slice(0, 2).map((item, i) => ({ id: `${g.id}-${i}`, title: item.q, content: item.a })))
   .slice(0, 7);
+}
 
-export default function AccountSupportPage({ searchParams }: { searchParams: SearchParams }) {
+export default async function AccountSupportPage({ searchParams }: { searchParams: SearchParams }) {
+  const FAQ_PICKS = await faqPicks();
   const channels = [
     { href: `tel:${SUPPORT_PHONE.replace(/[^\d+]/g, '')}`, icon: <Phone />, title: 'Call us', detail: SUPPORT_PHONE, note: '7 AM – 11 PM, every day' },
     { href: `mailto:${SUPPORT_EMAIL}`, icon: <Mail />, title: 'Email', detail: SUPPORT_EMAIL, note: 'Reply within a few hours' },

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Fraunces, Plus_Jakarta_Sans } from 'next/font/google';
 import './globals.css';
 import { ShopProvider } from '@/context/ShopContext';
+import { getDeliverySettings } from '@/lib/data/settings';
 import { ConfirmProvider } from '@/components/ui/ConfirmDialog';
 import { MotionProvider } from '@/components/ui/motion';
 import { Header } from '@/components/layout/Header';
@@ -31,7 +32,8 @@ export const viewport: Viewport = {
   themeColor: '#1a663b',
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const delivery = await getDeliverySettings();
   return (
     <html lang="en" suppressHydrationWarning className={`h-full antialiased ${jakarta.variable} ${fraunces.variable}`}>
       <body className="min-h-full flex flex-col font-sans bg-[#f9fbf9] text-[#112a1d]">
@@ -39,7 +41,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           Skip to content
         </a>
         <MotionProvider>
-          <ShopProvider>
+          <ShopProvider delivery={delivery}>
             <ConfirmProvider>
               <DatabaseNotice />
               <Header />

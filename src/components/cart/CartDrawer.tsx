@@ -5,16 +5,17 @@ import { AnimatePresence, motion } from 'motion/react';
 import { ShoppingBasket, Trash2, Truck } from 'lucide-react';
 import { useShop } from '@/context/ShopContext';
 import { formatBDT } from '@/lib/format';
-import { FREE_DELIVERY_THRESHOLD } from '@/lib/pricing';
 import { Drawer } from '@/components/ui/Dialog';
 import { QuantityStepper } from '@/components/ui/Field';
 
 /** Slide-over basket (ui Drawer: focus trap, Esc, backdrop fade, spring slide). Lines animate in and out. */
 export function CartDrawer() {
-  const { cartOpen, setCartOpen, cart, setQty, removeFromCart, subtotal, discount, deliveryFee, total, coupon } = useShop();
+  const { cartOpen, setCartOpen, cart, setQty, removeFromCart, subtotal, discount, deliveryFee, total, coupon, delivery } = useShop();
   const count = cart.reduce((s, i) => s + i.qty, 0);
-  const remaining = FREE_DELIVERY_THRESHOLD - subtotal;
-  const progress = Math.min(100, (subtotal / FREE_DELIVERY_THRESHOLD) * 100);
+  // Free-delivery progress only when the admin has set a Dhaka threshold.
+  const freeFrom = delivery.dhakaFreeFrom !== null && delivery.dhakaFreeFrom > 0 && delivery.dhakaFee > 0 ? delivery.dhakaFreeFrom : null;
+  const remaining = freeFrom === null ? 0 : freeFrom - subtotal;
+  const progress = freeFrom === null ? 100 : Math.min(100, (subtotal / freeFrom) * 100);
   const close = () => setCartOpen(false);
 
   return (
@@ -32,6 +33,7 @@ export function CartDrawer() {
         </div>
       ) : (
         <div className="-mx-6 -mb-6 flex min-h-full flex-col">
+          {freeFrom !== null && (
           <div className="mx-6 rounded-xl bg-[#f4f9f5] px-4 py-3">
             <p className="flex items-center gap-2 text-[13px] font-semibold text-[#14522f]">
               <Truck className="h-4 w-4 shrink-0" aria-hidden />
@@ -47,6 +49,7 @@ export function CartDrawer() {
               <motion.div className="h-full rounded-full bg-[#1a663b]" initial={false} animate={{ width: `${progress}%` }} transition={{ duration: 0.4 }} />
             </div>
           </div>
+          )}
 
           <ul className="flex-1 px-6">
             <AnimatePresence initial={false}>
