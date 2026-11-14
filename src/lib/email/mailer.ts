@@ -18,13 +18,15 @@ function getTransporter(): Transporter | null {
   if (transporter !== undefined) return transporter;
   const host = process.env.SMTP_HOST;
   const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
+  let pass = process.env.SMTP_PASS;
   if (!host || !user || !pass) {
     console.info('[email] SMTP_HOST / SMTP_USER / SMTP_PASS not set — order emails are off.');
     transporter = null;
     return null;
   }
   const port = Number(process.env.SMTP_PORT || 465);
+  // Google shows App Passwords as "abcd efgh ijkl mnop"; the spaces are not part of it.
+  if (/gmail\.com$/i.test(host)) pass = pass.replace(/\s+/g, '');
   transporter = nodemailer.createTransport({
     host,
     port,
