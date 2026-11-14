@@ -1,6 +1,8 @@
 'use server';
 
 import { headers } from 'next/headers';
+import { after } from 'next/server';
+import { sendOrderConfirmation } from '@/lib/email/order-confirmation';
 import { updateTag } from 'next/cache';
 import { supabaseAdmin, isMissingTableError } from '@/lib/supabase/admin';
 import { getCurrentUser } from '@/lib/supabase/server';
@@ -390,6 +392,10 @@ export async function placeOrder(_prev: PlaceOrderState, formData: FormData): Pr
       };
     }
     result = { status: 'redirect', orderId: order.id, accessToken: order.access_token, gatewayUrl: session.gatewayUrl };
+  } else {
+    // Cash on delivery is confirmed now; online orders email once paid.
+    const orderId = order.id;
+    after(() => sendOrderConfirmation(orderId));
   }
 
   if (SUBMISSION_RE.test(submissionId)) submissions.set(submissionId, { at: now, result });

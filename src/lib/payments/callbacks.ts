@@ -1,5 +1,7 @@
 import 'server-only';
 import { revalidateTag } from 'next/cache';
+import { after } from 'next/server';
+import { sendOrderConfirmation } from '@/lib/email/order-confirmation';
 import { SITE_NAME, SUPPORT_PHONE } from '@/lib/constants';
 import { readCallbackFields, verifyCallbackSignature } from './sslcommerz';
 import { confirmOnlinePayment, failOnlinePayment, orderReturnUrl, type PaymentOrderRow } from './service';
@@ -46,6 +48,11 @@ function returnFor(row: PaymentOrderRow, wanted: 'success' | 'failed' | 'cancell
   return redirect303(orderReturnUrl(row, row.payment_status === 'paid' ? 'success' : wanted));
 }
 
+/** Order email after the response; sendOrderConfirmation() sends at most once per order. */
+function queueConfirmation(orderId: string) {
+  after(() => sendOrderConfirmation(orderId));
+}
+
 export async function handleSuccessCallback(request: Request): Promise<Response> {
   const fields = await readCallbackFields(request);
   if (!fields) return unmatched();
@@ -55,6 +62,7 @@ export async function handleSuccessCallback(request: Request): Promise<Response>
     case 'paid':
     case 'late-paid':
       revalidateTag('catalog', 'max');
+      if (res.outcome === 'paid') queueConfirmation(res.row.id);
       return returnFor(res.row, 'success');
     case 'already-paid':
       return returnFor(res.row, 'success');
@@ -109,6 +117,7 @@ export async function handleIpn(request: Request): Promise<Response> {
       case 'paid':
       case 'late-paid':
         revalidateTag('catalog', 'max');
+        if (res.outcome === 'paid') queueConfirmation(res.row.id);
         return text('OK');
       case 'already-paid':
         return text('OK');
