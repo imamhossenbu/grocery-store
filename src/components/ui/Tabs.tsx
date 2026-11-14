@@ -126,7 +126,7 @@ export function Tabs({ idBase, items, value, onValueChange, variant = 'pill', ac
 
 export function TabPanel({ idBase, value, children, className }: { idBase: string; value: string; children: ReactNode; className?: string }) {
   return (
-    <div role="tabpanel" id={`${idBase}-panel`} aria-labelledby={tabId(idBase, value)} tabIndex={0} className={cx('outline-none', className)}>
+    <div role="tabpanel" id={`${idBase}-panel`} aria-labelledby={tabId(idBase, value)} tabIndex={0} className={cx('rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-[#1a663b]/30 focus-visible:ring-offset-4', className)}>
       {children}
     </div>
   );

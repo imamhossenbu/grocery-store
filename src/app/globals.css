@@ -135,13 +135,31 @@ body {
  * skeleton shimmer.
  * ------------------------------------------------------------------------- */
 
-/* Brand focus ring instead of the browser default (keyboard focus only). */
-:focus-visible {
-  outline: 2px solid #1a663b;
-  outline-offset: 2px;
+/* Brand focus ring instead of the browser default (keyboard focus only).
+   In @layer base so components that draw their own ring (text fields ring
+   their rounded wrapper via focus-within) can turn it off with outline-none;
+   unlayered, it beat every utility and drew a square box inside the field. */
+@layer base {
+  :focus-visible {
+    outline: 2px solid #1a663b;
+    outline-offset: 2px;
+  }
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
 }
-:focus:not(:focus-visible) {
-  outline: none;
+
+/* Browser autofill: keep our field colours instead of Chrome's blue/yellow. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:focus,
+select:-webkit-autofill {
+  -webkit-text-fill-color: #112a1d;
+  caret-color: #112a1d;
+  box-shadow: 0 0 0 1000px #f3faf5 inset;
+  transition: background-color 9999s ease-out 0s;
 }
 
 /* Thin brand scrollbars for scrollable panels. */
