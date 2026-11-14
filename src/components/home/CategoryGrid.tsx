@@ -20,8 +20,8 @@ export function CategoryGrid({ categories }: { categories: (Category & { product
             </span>
             <span className="flex flex-1 flex-col p-3.5">
               <span className="text-sm font-bold text-[#112a1d] group-hover:text-[#1a663b]">{c.name}</span>
-              <span className="mt-0.5 line-clamp-2 text-xs text-[#5a7165]">{c.blurb}</span>
-              <span className="mt-auto pt-2 text-[11px] font-bold uppercase tracking-wider text-[#1a663b]">
+              <span className="mt-0.5 line-clamp-2 text-[13px] text-[#5a7165]">{c.blurb}</span>
+              <span className="mt-auto pt-2 text-xs font-bold uppercase tracking-wider text-[#1a663b]">
                 {c.productCount} {c.productCount === 1 ? 'item' : 'items'}
               </span>
             </span>

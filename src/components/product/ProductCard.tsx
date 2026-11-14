@@ -24,13 +24,13 @@ export function ProductCard({ product, priority = false }: { product: Product; p
         />
         <div className="absolute left-3 top-3 flex flex-col items-start gap-1.5">
           {product.badge && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-white/95 px-3 py-1 text-[11px] font-extrabold uppercase tracking-wider text-[#1a663b] shadow-sm">
+            <span className="inline-flex items-center gap-1 rounded-full bg-white/95 px-3 py-1 text-xs font-extrabold uppercase tracking-wider text-[#1a663b] shadow-sm">
               <Leaf className="w-3 h-3 text-[#1a663b]" />
               {product.badge}
             </span>
           )}
           {pct > 0 && (
-            <span className="rounded-full bg-[#f5b82e] px-2.5 py-1 text-[11px] font-extrabold text-[#3a2502] shadow-sm">-{pct}%</span>
+            <span className="rounded-full bg-[#f5b82e] px-2.5 py-1 text-xs font-extrabold text-[#3a2502] shadow-sm">-{pct}%</span>
           )}
         </div>
         {out && (
@@ -42,12 +42,12 @@ export function ProductCard({ product, priority = false }: { product: Product; p
       <WishlistButton product={product} className="absolute right-3 top-3" />
 
       <div className="flex flex-1 flex-col p-4">
-        <div className="flex items-center justify-between gap-2 text-xs text-[#5a7165]">
-          <span className="font-semibold bg-[#f0f7f2] text-[#1a663b] px-2.5 py-0.5 rounded-full">{product.unit}</span>
-          <span className="inline-flex items-center gap-1 font-bold text-[#112a1d]">
+        <div className="flex items-center justify-between gap-2 text-[13px] text-[#5a7165]">
+          <span className="min-w-0 truncate text-xs font-semibold bg-[#f0f7f2] text-[#1a663b] px-2.5 py-0.5 rounded-full" title={product.unit}>{product.unit}</span>
+          <span className="inline-flex shrink-0 items-center gap-1 font-bold text-[#112a1d]">
             <Star className="w-3.5 h-3.5 fill-[#f5b82e] text-[#f5b82e]" />
             {product.rating.toFixed(1)}
-            {product.reviewCount ? <span className="font-medium text-[#7e9688]">({product.reviewCount})</span> : null}
+            {product.reviewCount ? <span className="hidden font-medium text-[#5a7165] min-[400px]:inline">({product.reviewCount})</span> : null}
           </span>
         </div>
         <h3 className="mt-2.5 text-[15px] font-bold leading-snug text-[#112a1d] line-clamp-2 min-h-[2.6em]">
@@ -57,9 +57,9 @@ export function ProductCard({ product, priority = false }: { product: Product; p
           <div className="flex items-baseline justify-between gap-2">
             <div className="flex items-baseline gap-1.5">
               <span className="text-lg font-extrabold text-[#1a663b]">{formatBDT(product.price)}</span>
-              {pct > 0 && <span className="text-xs text-[#7e9688] line-through">{formatBDT(product.oldPrice!)}</span>}
+              {pct > 0 && <span className="text-[13px] text-[#5a7165] line-through">{formatBDT(product.oldPrice!)}</span>}
             </div>
-            <span className={`text-[11px] font-bold ${out ? 'text-red-600' : low ? 'text-amber-600' : 'text-emerald-700'}`}>
+            <span className={`text-xs font-bold ${out ? 'text-red-600' : low ? 'text-amber-600' : 'text-emerald-700'}`}>
               {out ? 'Sold out' : low ? `Only ${product.stock} left` : 'In stock'}
             </span>
           </div>

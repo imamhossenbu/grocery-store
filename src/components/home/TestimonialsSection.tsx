@@ -62,7 +62,7 @@ export function TestimonialsSection() {
                   <span className="text-sm font-bold text-[#112a1d] block leading-snug">
                     {rev.name}
                   </span>
-                  <span className="text-xs text-[#5a7165] block">
+                  <span className="text-[13px] text-[#5a7165] block">
                     {rev.role}
                   </span>
                 </div>

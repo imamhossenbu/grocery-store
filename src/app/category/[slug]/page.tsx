@@ -155,7 +155,7 @@ function SubcategoryCards({ node }: { node: CategoryNode }) {
             </span>
             <span>
               <span className="block font-display text-base font-bold leading-tight">All {node.name}</span>
-              <span className="mt-0.5 block text-[11px] font-bold uppercase tracking-wider text-[#b9f2cf]">{plural(node.productCount)}</span>
+              <span className="mt-0.5 block text-xs font-bold uppercase tracking-wider text-[#b9f2cf]">{plural(node.productCount)}</span>
             </span>
           </span>
         </li>
@@ -176,7 +176,7 @@ function SubcategoryCards({ node }: { node: CategoryNode }) {
               </span>
               <span className="flex flex-1 flex-col p-3">
                 <span className="text-sm font-bold leading-tight text-[#112a1d] group-hover:text-[#1a663b]">{c.name}</span>
-                <span className="mt-auto pt-1.5 text-[11px] font-bold uppercase tracking-wider text-[#1a663b]">{plural(c.productCount)}</span>
+                <span className="mt-auto pt-1.5 text-xs font-bold uppercase tracking-wider text-[#1a663b]">{plural(c.productCount)}</span>
               </span>
             </Link>
           </li>
@@ -215,7 +215,7 @@ function SiblingPills({ parent, current }: { parent: CategoryNode; current: stri
       <li className="shrink-0">
         <Link href={`/category/${parent.id}`} className="inline-flex h-10 items-center gap-1.5 rounded-full border border-[#cfe3d6] bg-[#f0f7f2] px-4 text-sm font-bold text-[#14522f] hover:border-[#1a663b]">
           <ArrowLeft className="h-4 w-4" aria-hidden /> All {parent.name}
-          <span className="text-xs font-semibold text-[#5a7165]">{parent.productCount}</span>
+          <span className="text-[13px] font-semibold text-[#5a7165]">{parent.productCount}</span>
         </Link>
       </li>
       {parent.children.map((c) => {
@@ -225,7 +225,7 @@ function SiblingPills({ parent, current }: { parent: CategoryNode; current: stri
             <Link href={`/category/${c.id}`} aria-current={on ? 'page' : undefined} className={pill(on)}>
               <PillImage src={c.image} />
               {c.name}
-              <span className={`text-xs font-semibold ${on ? 'text-[#b9f2cf]' : 'text-[#7e9688]'}`}>{c.productCount}</span>
+              <span className={`text-[13px] font-semibold ${on ? 'text-[#b9f2cf]' : 'text-[#5a7165]'}`}>{c.productCount}</span>
             </Link>
           </li>
         );

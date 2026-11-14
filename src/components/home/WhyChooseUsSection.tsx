@@ -62,7 +62,7 @@ export function WhyChooseUsSection() {
               <span className="font-display text-3xl font-extrabold block">
                 6+ Co-ops
               </span>
-              <span className="text-xs text-[#b9d8c5]">
+              <span className="text-[13px] text-[#b9d8c5]">
                 Direct partner farm suppliers in North Bengal & coastal belts.
               </span>
             </div>
@@ -91,7 +91,7 @@ export function WhyChooseUsSection() {
                     <h3 className="mt-3.5 text-sm font-bold text-[#112a1d]">
                       {perk.title}
                     </h3>
-                    <p className="mt-1 text-xs text-[#5a7165] leading-relaxed">
+                    <p className="mt-1 text-[13px] text-[#5a7165] leading-relaxed">
                       {perk.text}
                     </p>
                   </div>

@@ -45,7 +45,7 @@ export default function ContactPage() {
             </h2>
             <p className="mt-1 mb-6 text-sm text-[#5a7165]">Fill in the form and we’ll reply by email, or call you if you leave a number.</p>
             <ContactForm />
-            <p className="mt-6 text-xs text-[#7e9688]">
+            <p className="mt-6 text-[13px] text-[#5a7165]">
               We use your details only to answer this message. See our <Link href="/privacy" className="font-semibold text-[#1a663b] hover:underline">privacy policy</Link>.
             </p>
           </section>
@@ -64,7 +64,7 @@ function ContactCard({ icon: Icon, title, detail, note }: { icon: typeof Phone; 
       <div className="min-w-0">
         <h3 className="text-xs font-bold uppercase tracking-widest text-[#5a7165]">{title}</h3>
         <div className="mt-1 font-bold text-[#112a1d]">{detail}</div>
-        <p className="mt-1 text-xs text-[#5a7165]">{note}</p>
+        <p className="mt-1 text-[13px] text-[#5a7165]">{note}</p>
       </div>
     </div>
   );

@@ -31,7 +31,7 @@ export function InfoHero({
         </span>
         <h1 className="mt-4 max-w-3xl font-display text-4xl font-bold tracking-tight text-[#112a1d] sm:text-5xl">{title}</h1>
         <div className="mt-4 max-w-2xl text-base leading-relaxed text-[#445c50] sm:text-lg">{intro}</div>
-        {meta && <div className="mt-4 text-xs text-[#7e9688]">{meta}</div>}
+        {meta && <div className="mt-4 text-[13px] text-[#5a7165]">{meta}</div>}
       </div>
     </section>
   );
@@ -65,7 +65,7 @@ export function Toc({ items }: { items: { id: string; label: string }[] }) {
         {items.map((it, i) => (
           <li key={it.id}>
             <a href={`#${it.id}`} className="flex gap-2 text-[#234835] hover:text-[#1a663b]">
-              <span className="w-5 shrink-0 text-[#93a99c]">{i + 1}.</span>
+              <span className="w-5 shrink-0 text-[#5a7165]">{i + 1}.</span>
               {it.label}
             </a>
           </li>
@@ -94,7 +94,7 @@ export function SupportCard({ title = 'Still need help?' }: { title?: string }) 
           Send a message
         </Link>
       </div>
-      <p className="mt-5 flex items-center gap-2 text-xs text-[#9fd8b5]">
+      <p className="mt-5 flex items-center gap-2 text-[13px] text-[#9fd8b5]">
         <Clock className="h-3.5 w-3.5" /> {SUPPORT_HOURS}
       </p>
     </aside>
