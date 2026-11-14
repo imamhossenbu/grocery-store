@@ -1,6 +1,7 @@
 'use client';
 
 import type { InputHTMLAttributes, ReactNode } from 'react';
+import Link from 'next/link';
 import { AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 import { Field, Input, PasswordInput } from '@/components/ui/Field';
 
@@ -72,6 +73,56 @@ export function FormAlert({ ok, message, className = '' }: { ok: boolean; messag
     >
       {ok ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" /> : <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />}
       <span className="leading-relaxed">{message}</span>
+    </div>
+  );
+}
+
+/**
+ * Centered result panel for the auth flows (link sent, password updated,
+ * link expired). Same header layout as OtpVerifyForm.
+ */
+export function AuthNotice({
+  icon,
+  tone = 'success',
+  title,
+  children,
+  note,
+  action,
+}: {
+  icon: ReactNode;
+  tone?: 'success' | 'warning';
+  title: string;
+  children: ReactNode;
+  note?: ReactNode;
+  action?: { href: string; label: string; primary?: boolean };
+}) {
+  return (
+    <div className="space-y-6 text-center">
+      <div>
+        <span
+          className={`mx-auto grid h-16 w-16 place-items-center rounded-2xl [&>svg]:h-8 [&>svg]:w-8 ${
+            tone === 'success' ? 'bg-[#e8f5ee] text-[#1a663b]' : 'bg-amber-50 text-amber-700'
+          }`}
+          aria-hidden
+        >
+          {icon}
+        </span>
+        <h2 className="mt-4 font-display text-2xl font-bold text-[#112a1d]">{title}</h2>
+        <div role="status" className="mt-2 text-sm leading-relaxed text-[#3f5649]">{children}</div>
+      </div>
+      {note && <p className="rounded-2xl border border-[#dfece3] bg-[#f6faf7] p-4 text-sm text-[#3f5649]">{note}</p>}
+      {action && (
+        <Link
+          href={action.href}
+          className={
+            action.primary
+              ? 'inline-flex h-12 w-full items-center justify-center rounded-full bg-emerald-gradient px-6 text-sm font-bold text-white shadow-glow transition hover:brightness-105'
+              : 'fb-press inline-flex h-11 items-center justify-center rounded-full border-2 border-[#cce2d4] bg-white px-5 text-sm font-bold text-[#14522f] transition hover:border-[#1a663b]'
+          }
+        >
+          {action.label}
+        </Link>
+      )}
     </div>
   );
 }

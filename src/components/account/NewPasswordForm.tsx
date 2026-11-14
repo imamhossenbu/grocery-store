@@ -1,10 +1,9 @@
 'use client';
 
 import { useActionState, useState } from 'react';
-import Link from 'next/link';
 import { ShieldCheck } from 'lucide-react';
 import { changePassword, resetPassword, type AuthFormState } from '@/actions/auth';
-import { FormAlert, PasswordField, SubmitButton } from './FormControls';
+import { AuthNotice, FormAlert, PasswordField, SubmitButton } from './FormControls';
 import { PasswordStrength } from './PasswordStrength';
 
 const initial: AuthFormState = { ok: false, message: '' };
@@ -27,16 +26,9 @@ export function NewPasswordForm({ mode }: { mode: 'reset' | 'change' }) {
 
   if (mode === 'reset' && state.ok) {
     return (
-      <div className="space-y-5 text-center">
-        <span className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-[#e8f5ee] text-[#1a663b]">
-          <ShieldCheck className="h-8 w-8" />
-        </span>
-        <h2 className="font-display text-2xl font-bold text-[#112a1d]">Password updated</h2>
-        <p role="status" className="text-sm text-[#5a7165]">{state.message}</p>
-        <Link href="/account" className="inline-flex h-11 items-center justify-center rounded-full bg-emerald-gradient px-6 text-sm font-bold text-white shadow-glow">
-          Go to my account
-        </Link>
-      </div>
+      <AuthNotice icon={<ShieldCheck />} title="Password updated" action={{ href: '/account', label: 'Go to my account', primary: true }}>
+        {state.message}
+      </AuthNotice>
     );
   }
 
