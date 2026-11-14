@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { Check, ChevronDown, Search } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { popupMotion } from './motion';
-import { cx, preferredSide, useDismissableLayer } from './overlay';
+import { POPUP_Z, cx, preferredSide, useAnchoredPosition, useDismissableLayer, useIsClient } from './overlay';
 
 /**
  * Brand-styled replacement for <select>: a button + listbox popup.
@@ -80,6 +81,7 @@ export function Select({
   const rootRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
+  const popupRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const typeahead = useRef({ text: '', at: 0 });
 
@@ -96,7 +98,9 @@ export function Select({
     if (refocus) buttonRef.current?.focus();
   };
 
-  useDismissableLayer(rootRef, open, () => close());
+  useDismissableLayer(rootRef, open, () => close(), { ignore: [popupRef] });
+  useAnchoredPosition(buttonRef, popupRef, open, { placement: side, matchWidth: true });
+  const isClient = useIsClient();
 
   const openList = (toIndex?: number) => {
     if (disabled) return;
@@ -220,83 +224,85 @@ export function Select({
         <ChevronDown aria-hidden className={cx('h-4 w-4 shrink-0 text-[#3f5649] transition-transform', open && 'rotate-180')} />
       </button>
 
-      <AnimatePresence>
-      {open && (
-        <motion.div
-          {...popupMotion(side)}
-          className={cx(
-            'absolute left-0 z-[70] w-full min-w-[12rem] overflow-hidden rounded-2xl border border-[#dfece3] bg-white shadow-card',
-            side === 'bottom' ? 'top-full mt-2' : 'bottom-full mb-2'
-          )}
-        >
-          {canSearch && (
-            <div className="border-b border-[#eef5f0] p-2">
-              <div className="relative">
-                <Search aria-hidden className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#3f5649]" />
-                <input
-                  ref={searchRef}
-                  type="text"
-                  value={query}
-                  onChange={(e) => {
-                    setQuery(e.target.value);
-                    setActive(0);
-                  }}
-                  onKeyDown={onListKey}
-                  placeholder="Search…"
-                  aria-label="Filter options"
-                  role="combobox"
-                  aria-expanded="true"
-                  aria-controls={listId}
-                  aria-autocomplete="list"
-                  aria-activedescendant={active >= 0 && visible[active] ? `${listId}-${active}` : undefined}
-                  className="h-10 w-full rounded-xl border border-[#d3e5da] bg-[#f9fbf9] pl-9 pr-3 text-sm text-[#112a1d] placeholder-[#93a99c] outline-none focus:border-[#1a663b]"
-                />
-              </div>
-            </div>
-          )}
-          <ul
-            ref={listRef}
-            id={listId}
-            role="listbox"
-            tabIndex={canSearch ? -1 : 0}
-            aria-labelledby={aria['aria-labelledby'] ?? buttonId}
-            aria-activedescendant={!canSearch && active >= 0 && visible[active] ? `${listId}-${active}` : undefined}
-            onKeyDown={canSearch ? undefined : onListKey}
-            className="fb-scroll max-h-64 overflow-y-auto p-1.5 outline-none"
-          >
-            {visible.length === 0 && <li className="px-3 py-6 text-center text-sm text-[#3f5649]">No matches</li>}
-            {visible.map((opt, i) => {
-              const isSelected = opt.value === value;
-              return (
-                <li
-                  key={opt.value}
-                  id={`${listId}-${i}`}
-                  data-index={i}
-                  role="option"
-                  aria-selected={isSelected}
-                  aria-disabled={opt.disabled || undefined}
-                  onPointerMove={() => !opt.disabled && setActive(i)}
-                  onClick={() => choose(opt)}
-                  className={cx(
-                    'flex cursor-pointer items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm transition-colors',
-                    opt.disabled && 'cursor-not-allowed opacity-45',
-                    i === active ? 'bg-[#eef7f1] text-[#0f2c1d]' : 'text-[#234835]',
-                    isSelected && 'font-bold'
-                  )}
+      {isClient &&
+        createPortal(
+          <AnimatePresence>
+            {open && (
+              <motion.div
+                {...popupMotion(side)}
+                ref={popupRef}
+                className={cx('fixed min-w-[12rem] overflow-hidden rounded-2xl border border-[#dfece3] bg-white shadow-card', POPUP_Z)}
+              >
+                {canSearch && (
+                  <div className="border-b border-[#eef5f0] p-2">
+                    <div className="relative">
+                      <Search aria-hidden className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#3f5649]" />
+                      <input
+                        ref={searchRef}
+                        type="text"
+                        value={query}
+                        onChange={(e) => {
+                          setQuery(e.target.value);
+                          setActive(0);
+                        }}
+                        onKeyDown={onListKey}
+                        placeholder="Search…"
+                        aria-label="Filter options"
+                        role="combobox"
+                        aria-expanded="true"
+                        aria-controls={listId}
+                        aria-autocomplete="list"
+                        aria-activedescendant={active >= 0 && visible[active] ? `${listId}-${active}` : undefined}
+                        className="h-10 w-full rounded-xl border border-[#d3e5da] bg-[#f9fbf9] pl-9 pr-3 text-sm text-[#112a1d] placeholder-[#93a99c] outline-none focus:border-[#1a663b]"
+                      />
+                    </div>
+                  </div>
+                )}
+                <ul
+                  ref={listRef}
+                  id={listId}
+                  role="listbox"
+                  tabIndex={canSearch ? -1 : 0}
+                  aria-labelledby={aria['aria-labelledby'] ?? buttonId}
+                  aria-activedescendant={!canSearch && active >= 0 && visible[active] ? `${listId}-${active}` : undefined}
+                  onKeyDown={canSearch ? undefined : onListKey}
+                  className="fb-scroll max-h-64 overflow-y-auto p-1.5 outline-none"
                 >
-                  {opt.icon && <span className="shrink-0 text-[#1a663b]">{opt.icon}</span>}
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate">{opt.label}</span>
-                    {opt.description && <span className="block truncate text-[13px] font-normal text-[#3f5649]">{opt.description}</span>}
-                  </span>
-                  <Check aria-hidden className={cx('h-4 w-4 shrink-0 text-[#1a663b]', !isSelected && 'invisible')} />
-                </li>
-              );
-            })}
-          </ul>
-        </motion.div>
-      )}
-      </AnimatePresence>
+                  {visible.length === 0 && <li className="px-3 py-6 text-center text-sm text-[#3f5649]">No matches</li>}
+                  {visible.map((opt, i) => {
+                    const isSelected = opt.value === value;
+                    return (
+                      <li
+                        key={opt.value}
+                        id={`${listId}-${i}`}
+                        data-index={i}
+                        role="option"
+                        aria-selected={isSelected}
+                        aria-disabled={opt.disabled || undefined}
+                        onPointerMove={() => !opt.disabled && setActive(i)}
+                        onClick={() => choose(opt)}
+                        className={cx(
+                          'flex cursor-pointer items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm transition-colors',
+                          opt.disabled && 'cursor-not-allowed opacity-45',
+                          i === active ? 'bg-[#eef7f1] text-[#0f2c1d]' : 'text-[#234835]',
+                          isSelected && 'font-bold'
+                        )}
+                      >
+                        {opt.icon && <span className="shrink-0 text-[#1a663b]">{opt.icon}</span>}
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate">{opt.label}</span>
+                          {opt.description && <span className="block truncate text-[13px] font-normal text-[#3f5649]">{opt.description}</span>}
+                        </span>
+                        <Check aria-hidden className={cx('h-4 w-4 shrink-0 text-[#1a663b]', !isSelected && 'invisible')} />
+                      </li>
+                    );
+                  })}
+                </ul>
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body
+        )}
     </div>
   );
 }

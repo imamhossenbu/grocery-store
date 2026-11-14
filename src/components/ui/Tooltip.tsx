@@ -1,8 +1,9 @@
 'use client';
 
 import { cloneElement, isValidElement, useEffect, useId, useRef, useState, type ReactElement, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'motion/react';
-import { cx } from './overlay';
+import { cx, useAnchoredPosition, useIsClient } from './overlay';
 
 /**
  * Hover / focus tooltip. The child must be a single focusable element; it
@@ -24,17 +25,22 @@ export interface TooltipProps {
   className?: string;
 }
 
+// Centring for the fixed position useAnchoredPosition sets.
 const SIDE = {
-  top: 'bottom-full left-1/2 mb-2 -translate-x-1/2',
-  bottom: 'top-full left-1/2 mt-2 -translate-x-1/2',
-  left: 'right-full top-1/2 mr-2 -translate-y-1/2',
-  right: 'left-full top-1/2 ml-2 -translate-y-1/2',
+  top: '-translate-x-1/2',
+  bottom: '-translate-x-1/2',
+  left: '-translate-y-1/2',
+  right: '-translate-y-1/2',
 };
 
 export function Tooltip({ content, children, side = 'top', delay = 250, disabled, className }: TooltipProps) {
   const id = useId();
   const [open, setOpen] = useState(false);
   const timer = useRef<number | undefined>(undefined);
+  const anchorRef = useRef<HTMLSpanElement>(null);
+  const tipRef = useRef<HTMLSpanElement>(null);
+  const isClient = useIsClient();
+  useAnchoredPosition(anchorRef, tipRef, open && !disabled, { placement: side, align: 'center' });
 
   useEffect(() => {
     if (!open) return;
@@ -59,6 +65,7 @@ export function Tooltip({ content, children, side = 'top', delay = 250, disabled
 
   return (
     <span
+      ref={anchorRef}
       className={cx('relative inline-flex', className)}
       onPointerEnter={(e) => e.pointerType === 'mouse' && show(delay)}
       onPointerLeave={hide}
@@ -66,23 +73,28 @@ export function Tooltip({ content, children, side = 'top', delay = 250, disabled
       onBlur={hide}
     >
       {cloneElement(children, { 'aria-describedby': describedBy })}
-      <AnimatePresence>
-        {open && (
-          <motion.span
-            id={id}
-            role="tooltip"
-            initial={{ opacity: 0, scale: 0.96 }}
-            animate={{ opacity: 1, scale: 1, transition: { duration: 0.12 } }}
-            exit={{ opacity: 0, transition: { duration: 0.08 } }}
-            className={cx(
-              'pointer-events-none absolute z-[75] w-max max-w-[16rem] rounded-xl bg-[#0f2c1d] px-3 py-1.5 text-[13px] font-semibold leading-snug text-white shadow-card',
-              SIDE[side]
+      {isClient &&
+        createPortal(
+          <AnimatePresence>
+            {open && (
+              <motion.span
+                ref={tipRef}
+                id={id}
+                role="tooltip"
+                initial={{ opacity: 0, scale: 0.96 }}
+                animate={{ opacity: 1, scale: 1, transition: { duration: 0.12 } }}
+                exit={{ opacity: 0, transition: { duration: 0.08 } }}
+                className={cx(
+                  'pointer-events-none fixed z-[95] w-max max-w-[16rem] rounded-xl bg-[#0f2c1d] px-3 py-1.5 text-[13px] font-semibold leading-snug text-white shadow-card',
+                  SIDE[side]
+                )}
+              >
+                {content}
+              </motion.span>
             )}
-          >
-            {content}
-          </motion.span>
+          </AnimatePresence>,
+          document.body
         )}
-      </AnimatePresence>
     </span>
   );
 }

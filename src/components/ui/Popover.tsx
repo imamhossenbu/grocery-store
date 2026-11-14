@@ -1,9 +1,10 @@
 'use client';
 
 import { useId, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import { popupMotion } from './motion';
-import { cx, preferredSide, useDismissableLayer, useFocusTrap } from './overlay';
+import { POPUP_Z, cx, preferredSide, useAnchoredPosition, useDismissableLayer, useFocusTrap, useIsClient } from './overlay';
 
 /**
  * Click-to-open non-modal panel anchored to a trigger button (filters,
@@ -48,8 +49,10 @@ export function Popover({ trigger, label, children, align = 'start', open: contr
     onOpenChange?.(true);
   };
 
-  useDismissableLayer(rootRef, open, close);
+  useDismissableLayer(rootRef, open, close, { ignore: [panelRef] });
   useFocusTrap(panelRef, open);
+  useAnchoredPosition(buttonRef, panelRef, open, { placement: side, align });
+  const isClient = useIsClient();
 
   return (
     <div ref={rootRef} className="relative inline-flex">
@@ -67,26 +70,25 @@ export function Popover({ trigger, label, children, align = 'start', open: contr
       >
         {trigger}
       </button>
-      <AnimatePresence>
-      {open && (
-        <motion.div
-          {...popupMotion(side)}
-          ref={panelRef}
-          id={`${id}-panel`}
-          role="dialog"
-          aria-label={label}
-          tabIndex={-1}
-          className={cx(
-            'absolute z-[70] w-72 rounded-2xl border border-[#dfece3] bg-white p-4 shadow-card outline-none',
-            align === 'end' ? 'right-0' : 'left-0',
-            side === 'bottom' ? 'top-full mt-2' : 'bottom-full mb-2',
-            className
-          )}
-        >
-          {typeof children === 'function' ? children({ close }) : children}
-        </motion.div>
-      )}
-      </AnimatePresence>
+      {isClient &&
+        createPortal(
+          <AnimatePresence>
+            {open && (
+              <motion.div
+                {...popupMotion(side)}
+                ref={panelRef}
+                id={`${id}-panel`}
+                role="dialog"
+                aria-label={label}
+                tabIndex={-1}
+                className={cx('fixed w-72 max-w-[calc(100vw-1rem)] rounded-2xl border border-[#dfece3] bg-white p-4 shadow-card outline-none', POPUP_Z, className)}
+              >
+                {typeof children === 'function' ? children({ close }) : children}
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body
+        )}
     </div>
   );
 }

@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'motion/react';
 import { popupMotion } from './motion';
-import { cx, preferredSide, useDismissableLayer } from './overlay';
+import { POPUP_Z, cx, preferredSide, useAnchoredPosition, useDismissableLayer, useIsClient } from './overlay';
 
 /**
  * Menu button (WAI-ARIA "menu button" pattern).
@@ -66,7 +67,9 @@ export function DropdownMenu({ trigger, label, items, align = 'end', triggerClas
     setOpen(false);
     if (refocus) buttonRef.current?.focus();
   };
-  useDismissableLayer(rootRef, open, () => close());
+  useDismissableLayer(rootRef, open, () => close(), { ignore: [menuRef] });
+  useAnchoredPosition(buttonRef, menuRef, open, { placement: side, align });
+  const isClient = useIsClient();
 
   const openMenu = (at: 'first' | 'last') => {
     setSide(preferredSide(buttonRef.current, items.length * 44 + 16));
@@ -132,74 +135,77 @@ export function DropdownMenu({ trigger, label, items, align = 'end', triggerClas
       >
         {trigger}
       </button>
-      <AnimatePresence>
-      {open && (
-        <motion.div
-          {...popupMotion(side)}
-          ref={menuRef}
-          id={`${id}-menu`}
-          role="menu"
-          aria-labelledby={`${id}-trigger`}
-          onKeyDown={onMenuKey}
-          className={cx(
-            'absolute z-[70] w-max min-w-[13rem] max-w-[min(20rem,90vw)] rounded-2xl border border-[#dfece3] bg-white p-1.5 shadow-card',
-            align === 'end' ? 'right-0' : 'left-0',
-            side === 'bottom' ? 'top-full mt-2' : 'bottom-full mb-2',
-            menuClassName
-          )}
-        >
-          {items.map((it, i) => {
-            if (it.type === 'separator') return <div key={i} role="separator" className="my-1 h-px bg-[#eef5f0]" />;
-            if (it.type === 'label')
-              return (
-                <div key={i} role="presentation" className="px-3 pb-1 pt-2 text-[13px] font-semibold text-[#3f5649]">
-                  {it.label}
-                </div>
-              );
-            const danger = it.tone === 'danger';
-            const content = (
-              <>
-                {it.icon && <span aria-hidden className="grid h-4 w-4 shrink-0 place-items-center [&>svg]:h-4 [&>svg]:w-4">{it.icon}</span>}
-                <span className="flex-1">{it.label}</span>
-                {it.hint && <span className="text-[13px] text-[#3f5649]">{it.hint}</span>}
-              </>
-            );
-            const common = {
-              role: 'menuitem' as const,
-              tabIndex: -1,
-              'data-index': i,
-              'aria-disabled': it.disabled || undefined,
-              className: itemClass(danger, it.disabled),
-            };
-            if (it.href && !it.disabled) {
-              return it.external ? (
-                <a key={i} href={it.href} target="_blank" rel="noopener noreferrer" {...common} onClick={() => close(false)}>
-                  {content}
-                </a>
-              ) : (
-                <Link key={i} href={it.href} {...common} onClick={() => close(false)}>
-                  {content}
-                </Link>
-              );
-            }
-            return (
-              <button
-                key={i}
-                type="button"
-                {...common}
-                disabled={it.disabled}
-                onClick={() => {
-                  close();
-                  it.onSelect?.();
-                }}
+      {isClient &&
+        createPortal(
+          <AnimatePresence>
+            {open && (
+              <motion.div
+                {...popupMotion(side)}
+                ref={menuRef}
+                id={`${id}-menu`}
+                role="menu"
+                aria-labelledby={`${id}-trigger`}
+                onKeyDown={onMenuKey}
+                className={cx(
+                  'fixed w-max min-w-[13rem] max-w-[min(20rem,90vw)] rounded-2xl border border-[#dfece3] bg-white p-1.5 shadow-card',
+                  POPUP_Z,
+                  menuClassName
+                )}
               >
-                {content}
-              </button>
-            );
-          })}
-        </motion.div>
-      )}
-      </AnimatePresence>
+                {items.map((it, i) => {
+                  if (it.type === 'separator') return <div key={i} role="separator" className="my-1 h-px bg-[#eef5f0]" />;
+                  if (it.type === 'label')
+                    return (
+                      <div key={i} role="presentation" className="px-3 pb-1 pt-2 text-[13px] font-semibold text-[#3f5649]">
+                        {it.label}
+                      </div>
+                    );
+                  const danger = it.tone === 'danger';
+                  const content = (
+                    <>
+                      {it.icon && <span aria-hidden className="grid h-4 w-4 shrink-0 place-items-center [&>svg]:h-4 [&>svg]:w-4">{it.icon}</span>}
+                      <span className="flex-1">{it.label}</span>
+                      {it.hint && <span className="text-[13px] text-[#3f5649]">{it.hint}</span>}
+                    </>
+                  );
+                  const common = {
+                    role: 'menuitem' as const,
+                    tabIndex: -1,
+                    'data-index': i,
+                    'aria-disabled': it.disabled || undefined,
+                    className: itemClass(danger, it.disabled),
+                  };
+                  if (it.href && !it.disabled) {
+                    return it.external ? (
+                      <a key={i} href={it.href} target="_blank" rel="noopener noreferrer" {...common} onClick={() => close(false)}>
+                        {content}
+                      </a>
+                    ) : (
+                      <Link key={i} href={it.href} {...common} onClick={() => close(false)}>
+                        {content}
+                      </Link>
+                    );
+                  }
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      {...common}
+                      disabled={it.disabled}
+                      onClick={() => {
+                        close();
+                        it.onSelect?.();
+                      }}
+                    >
+                      {content}
+                    </button>
+                  );
+                })}
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body
+        )}
     </div>
   );
 }
