@@ -1,6 +1,7 @@
 import 'server-only';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { connection } from 'next/server';
 
 /**
  * Per-request client bound to the visitor's auth cookies (publishable key,
@@ -29,6 +30,10 @@ export async function supabaseServer() {
 }
 
 export async function getCurrentUser() {
+  // Request-time only: getUser() reads Date.now() (token expiry), which Cache
+  // Components rejects while prerendering. connection() stops the prerender
+  // here, before the auth client runs.
+  await connection();
   const supabase = await supabaseServer();
   const { data } = await supabase.auth.getUser();
   return data.user ?? null;
