@@ -24,6 +24,15 @@
   --highlight-dark: #442c04;
   --muted: #5a7165;
   --border: #dfece3;
+  /* Height of a fixed mobile bottom bar, so toasts sit above it. */
+  --bottom-bar: 0px;
+}
+
+/* The account dashboard's mobile tab bar (h-16 + safe area), hidden from lg up. */
+@media (width < 64rem) {
+  body:has([data-bottom-bar]) {
+    --bottom-bar: calc(4rem + env(safe-area-inset-bottom));
+  }
 }
 
 @theme inline {

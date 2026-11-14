@@ -136,6 +136,7 @@ function ShellFrame({ children }: { children: ReactNode }) {
       {/* Mobile bottom tab bar */}
       <nav
         aria-label="Account quick navigation"
+        data-bottom-bar
         className="fixed inset-x-0 bottom-0 z-40 border-t border-[#dfece3] bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md lg:hidden"
       >
         <ul className="mx-auto grid max-w-lg grid-cols-4">
