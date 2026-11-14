@@ -5,6 +5,9 @@
  *   npm run db:seed-demo                 # seed (idempotent, safe to re-run)
  *   npm run db:seed-demo -- --dry-run    # build everything, check images, write nothing
  *   npm run db:seed-demo -- --reset      # remove ONLY the demo rows this script created
+ *   npm run db:seed-demo -- --refresh    # rebuild demo ACTIVITY up to today (orders, reviews,
+ *                                        # messages, subscribers, demo customers); never
+ *                                        # writes products, categories or coupons
  *
  * What it does
  *   1. Category tree: keeps the 6 original top-level categories, adds 3 more
@@ -12,9 +15,10 @@
  *      and moves the 18 original products into the right subcategory.
  *   2. Adds 40 demo products (ids in DEMO_PRODUCTS below).
  *   3. Adds 4 demo coupons (WEEKEND12, BIGBASKET200, PUJA20 [expired], WINTER100).
- *   4. Creates 12 demo customers (auth users with app_metadata.demo = true and
- *      e-mails @demo.freshbasket.test) plus their profiles.
- *   5. Inserts ~70 historical orders over the last 60 days (no stock changes).
+ *   4. Creates 30 demo customers (auth users with app_metadata.demo = true and
+ *      e-mails @demo.freshbasket.test) plus their profiles; 6 live outside Dhaka.
+ *   5. Inserts historical orders over the last 90 days up to today (no stock
+ *      changes); outside-Dhaka orders use the courier fee and a 2–4 day slot.
  *   6. Inserts ~120 reviews by the demo customers (the DB trigger updates ratings).
  *   7. Adds a few contact messages and newsletter subscribers.
  *   Also deletes the end-to-end TEST order FB-134453 (stock restored first).
@@ -38,6 +42,7 @@ import { randomBytes } from 'node:crypto';
 const args = new Set(process.argv.slice(2));
 const DRY_RUN = args.has('--dry-run');
 const RESET = args.has('--reset');
+const REFRESH = args.has('--refresh');
 
 function fail(message) {
   console.error(`\n✖ ${message}\n`);
@@ -569,6 +574,8 @@ function couponDiscount(code, subtotal) {
   return d;
 }
 const deliveryFee = (subtotal) => (subtotal >= 1000 ? 0 : 60);
+/** Same as the default store_settings / delivery_fee_for() fallback. */
+const OUTSIDE_DHAKA_FEE = 130;
 
 // ---------------------------------------------------------------------------
 // 4. Demo customers
@@ -587,6 +594,24 @@ const DEMO_USERS = [
   { email: 'imran.kabir', name: 'Imran Kabir', area: 'Motijheel', address: 'Flat 7A, 21 Purana Paltan Lane', loyalty: 2 },
   { email: 'jannatul.ferdous', name: 'Jannatul Ferdous', area: 'Old Dhaka', address: '45 Lalbagh Road, 2nd Floor', loyalty: 2 },
   { email: 'shahriar.alam', name: 'Shahriar Alam', area: 'Uttara', address: 'House 30, Road 14, Sector 11', loyalty: 3 },
+  { email: 'mahbub.alam', name: 'Mahbub Alam', area: 'Mirpur', address: 'House 44, Road 6, Pallabi', loyalty: 3 },
+  { email: 'rifat.chowdhury', name: 'Rifat Chowdhury', area: 'Bashundhara R/A', address: 'House 210, Road 11, Block D', loyalty: 4 },
+  { email: 'sumaiya.akter', name: 'Sumaiya Akter', area: 'Dhanmondi', address: 'Flat 3A, House 15, Road 27 (Old)', loyalty: 4 },
+  { email: 'nafis.iqbal', name: 'Nafis Iqbal', area: 'Gulshan', address: 'House 9, Road 63, Gulshan-2', loyalty: 3 },
+  { email: 'tahmina.begum', name: 'Tahmina Begum', area: 'Mohammadpur', address: '7/9 Humayun Road, Block B', loyalty: 3 },
+  { email: 'ashraful.haque', name: 'Ashraful Haque', area: 'Uttara', address: 'House 12, Road 5, Sector 7', loyalty: 2 },
+  { email: 'mitu.rahman', name: 'Mitu Rahman', area: 'Other Area in Dhaka', address: 'House 22, Road 8, Banasree Block C', loyalty: 2 },
+  { email: 'sabbir.hossain', name: 'Sabbir Hossain', area: 'Badda', address: 'House 4, Road 10, Middle Badda', loyalty: 2 },
+  { email: 'lamia.islam', name: 'Lamia Islam', area: 'Old Dhaka', address: '18 Rankin Street, Wari', loyalty: 3 },
+  { email: 'fahim.ahmed', name: 'Fahim Ahmed', area: 'Mirpur', address: 'House 61, Road 4, Mirpur DOHS', loyalty: 2 },
+  { email: 'priya.das', name: 'Priya Das', area: 'Mohammadpur', address: 'Flat 2C, 3/14 Lalmatia Block D', loyalty: 3 },
+  { email: 'naimul.karim', name: 'Naimul Karim', area: 'Banani', address: 'House 33, Road 2, Block C', loyalty: 1 },
+  { email: 'anika.tabassum', name: 'Anika Tabassum', area: 'Panchlaish', district: 'Chattogram', division: 'Chattogram', address: 'House 5, Road 2, Panchlaish R/A', loyalty: 2 },
+  { email: 'ruhul.amin', name: 'Ruhul Amin', area: 'Sylhet Sadar', district: 'Sylhet', division: 'Sylhet', address: 'Zindabazar, Rongmohol Tower 4th Floor', loyalty: 2 },
+  { email: 'shirin.sultana', name: 'Shirin Sultana', area: 'Boalia', district: 'Rajshahi', division: 'Rajshahi', address: 'Holding 112, Shaheb Bazar', loyalty: 1 },
+  { email: 'moinul.islam', name: 'Moinul Islam', area: 'Sonadanga', district: 'Khulna', division: 'Khulna', address: 'House 17, Road 3, Sonadanga R/A', loyalty: 1 },
+  { email: 'kaniz.fatema', name: 'Kaniz Fatema', area: 'Bogura Sadar', district: 'Bogura', division: 'Rajshahi', address: 'Jaleshwaritola, House 8', loyalty: 2 },
+  { email: 'jubayer.hasan', name: 'Jubayer Hasan', area: 'Gazipur Sadar', district: 'Gazipur', division: 'Dhaka', address: 'House 21, Road 6, Board Bazar', loyalty: 2 },
 ].map((u, i) => ({ ...u, email: `${u.email}@${DEMO_DOMAIN}`, phone: `${DEMO_PHONE_PREFIX}${String(101 + i * 7).padStart(5, '0')}` }));
 
 const GUESTS = [
@@ -605,8 +630,12 @@ const GUESTS = [
   ['Asif Iqbal', 'Mirpur', 'House 31, Road 11, Mirpur DOHS'],
   ['Rokeya Parvin', 'Dhanmondi', 'Flat B2, 27 Satmasjid Road'],
   ['Touhid Rahman', 'Other Area in Dhaka', 'House 5, Road 3, Banasree Block D'],
-].map(([name, area, address], i) => ({
-  name, area, address,
+  ['Nasrin Akhter', 'Kotwali', 'Jamal Khan Road, House 11', 'Chattogram', 'Chattogram'],
+  ['Biplob Saha', 'Narayanganj Sadar', '23 BB Road, Chashara', 'Narayanganj', 'Dhaka'],
+  ['Farzana Yasmin', 'Cumilla Sadar', 'House 7, Kandirpar', 'Cumilla', 'Chattogram'],
+  ['Mizanur Rahman', 'Mymensingh Sadar', 'House 14, Ganginarpar', 'Mymensingh', 'Mymensingh'],
+].map(([name, area, address, district, division], i) => ({
+  name, area, address, district: district ?? 'Dhaka', division: division ?? 'Dhaka',
   phone: `${DEMO_PHONE_PREFIX}${String(30001 + i * 13).padStart(5, '0')}`,
   email: i % 3 === 2 ? null : `${name.toLowerCase().replace(/[^a-z]+/g, '.')}@${DEMO_DOMAIN}`,
 }));
@@ -647,11 +676,11 @@ function buildOrders({ catalog, users, now, takenIds }) {
   const orders = [];
   const usedIds = new Set(takenIds);
 
-  for (let d = 59; d >= 0; d--) {
+  for (let d = 89; d >= 0; d--) {
     const dayStart = todayStart - d * DAY;
     const { dow } = dhakaParts(dayStart + 12 * HOUR);
     const weekend = dow === 5 || dow === 6; // Fri / Sat in Bangladesh
-    const lambda = 0.6 + 0.7 * (1 - d / 59) + (weekend ? 0.45 : 0) + (d === 0 ? 4.5 : d === 1 ? 2.5 : 0);
+    const lambda = 0.9 + 1.1 * (1 - d / 89) + (weekend ? 0.6 : 0) + (d === 0 ? 4.5 : d === 1 ? 2.5 : 0);
     let n = Math.floor(lambda) + (r.chance(lambda - Math.floor(lambda)) ? 1 : 0);
     if (r.chance(0.15)) n += 1;
     for (let k = 0; k < n; k++) {
@@ -673,7 +702,7 @@ function buildOrders({ catalog, users, now, takenIds }) {
     let customer;
     if (linked) {
       const u = r.weighted(users, (x) => x.loyalty);
-      customer = { user_id: u.id, name: u.name, phone: u.phone, email: u.email, address: u.address, area: u.area };
+      customer = { user_id: u.id, name: u.name, phone: u.phone, email: u.email, address: u.address, area: u.area, district: u.district ?? 'Dhaka', division: u.division ?? 'Dhaka' };
     } else {
       const g = r.pick(GUESTS);
       customer = { user_id: null, ...g };
@@ -704,7 +733,8 @@ function buildOrders({ catalog, users, now, takenIds }) {
       if (valid.length) coupon = r.pick(valid);
     }
     const discount = coupon ? couponDiscount(coupon, subtotal) : 0;
-    const fee = deliveryFee(subtotal);
+    const outsideDhaka = customer.district !== 'Dhaka';
+    const fee = outsideDhaka ? OUTSIDE_DHAKA_FEE : deliveryFee(subtotal);
     const total = Math.max(0, subtotal - discount + fee);
 
     // Delivery slot (same rules as the checkout)
@@ -714,8 +744,9 @@ function buildOrders({ catalog, users, now, takenIds }) {
     const slot = deliverToday ? r.pick(todaySlots) : r.pick(SLOTS);
     const dayOffset = deliverToday ? 0 : 1;
     const label = DAY_LABEL.format(new Date(Date.UTC(cp.y, cp.m, cp.day + dayOffset)));
-    const deliverySlot = `${slot.id} · ${deliverToday ? 'Today' : 'Tomorrow'}, ${label}`;
-    const slotStart = dhakaTime(cp.y, cp.m, cp.day + dayOffset, slot.start);
+    // Outside Dhaka goes by courier: no slot, delivered 2–4 days later.
+    const deliverySlot = outsideDhaka ? 'Courier delivery · 2–4 days' : `${slot.id} · ${deliverToday ? 'Today' : 'Tomorrow'}, ${label}`;
+    const slotStart = outsideDhaka ? dhakaTime(cp.y, cp.m, cp.day + r.int(2, 3), 10) : dhakaTime(cp.y, cp.m, cp.day + dayOffset, slot.start);
 
     // Payment + timeline
     const online = r.chance(0.35);
@@ -801,7 +832,10 @@ function buildOrders({ catalog, users, now, takenIds }) {
       customer_email: customer.email,
       customer_address: customer.address,
       customer_area: customer.area,
-      customer_city: 'Dhaka',
+      customer_city: customer.district,
+      customer_division: customer.division,
+      customer_district: customer.district,
+      customer_upazila: customer.area,
       delivery_slot: deliverySlot,
       notes: r.chance(0.18) ? r.pick(ORDER_NOTES) : null,
       items,
@@ -931,10 +965,31 @@ const CONTACT_MESSAGES = [
     message: 'I cancelled order after paying with bKash. How many days does the refund take?', days: 9 },
   { name: 'Sadia Islam', email: `sadia.islam@${DEMO_DOMAIN}`, phone: '01700000129', subject: 'Great service',
     message: 'Just wanted to say the fish was very fresh and the rider was extremely polite. Keep it up!', days: 2 },
+  { name: 'Anika Tabassum', email: `anika.tabassum@${DEMO_DOMAIN}`, phone: null, subject: 'Courier to Chattogram',
+    message: 'My last order to Panchlaish took 3 days. Is there any faster option for Chattogram? I am happy to pay a bit more.', days: 0.2 },
+  { name: 'Mahbub Alam', email: `mahbub.alam@${DEMO_DOMAIN}`, phone: '01700000185', subject: 'Wrong item in my order',
+    message: 'I ordered Rupchanda chinigura rice but got the 5 kg loose rice instead. Can someone call me to exchange it?', days: 0.6 },
+  { name: 'Priya Das', email: `priya.das@${DEMO_DOMAIN}`, phone: null, subject: 'Puja order',
+    message: 'We need fruits, sweets and ghee for a family puja next Friday. Can you deliver a large order early in the morning?', days: 1 },
+  { name: 'Biplob Saha', email: `biplob.saha@${DEMO_DOMAIN}`, phone: '01700030209', subject: 'Delivery to Narayanganj',
+    message: 'Do you deliver to Chashara, Narayanganj? The checkout shows courier delivery — how many days does it take?', days: 3 },
+  { name: 'Lamia Islam', email: `lamia.islam@${DEMO_DOMAIN}`, phone: null, subject: 'bKash payment failed',
+    message: 'My bKash payment showed failed but money was cut from my account. Order was not placed. Please check.', days: 5 },
+  { name: 'Rifat Chowdhury', email: `rifat.chowdhury@${DEMO_DOMAIN}`, phone: '01700000157', subject: 'Corporate gift baskets',
+    message: 'Can you make 25 fruit gift baskets for our office event? Budget around 1500 taka each.', days: 7 },
+  { name: 'Shirin Sultana', email: `shirin.sultana@${DEMO_DOMAIN}`, phone: null, subject: 'Mango season pre-order',
+    message: 'Please let me know when Rajshahi himsagar pre-orders open. I would like 20 kg for my family in Dhaka.', days: 12 },
+  { name: 'Fahim Ahmed', email: `fahim.ahmed@${DEMO_DOMAIN}`, phone: null, subject: 'App?',
+    message: 'Do you have a mobile app? Ordering from the website is easy but an app with saved orders would be great.', days: 18 },
+  { name: 'Mizanur Rahman', email: `mizanur.rahman@${DEMO_DOMAIN}`, phone: '01700030248', subject: 'Packaging feedback',
+    message: 'Eggs arrived well packed this time, thank you. The plastic bags could be replaced with paper bags though.', days: 26 },
 ];
 const NEWSLETTER = [
   'nusrat.jahan', 'farhana.rahman', 'sadia.islam', 'tasnim.chowdhury', 'shahriar.alam', 'ayesha.siddiqua', 'nadia.sultana', 'asif.iqbal', 'mahmuda.khatun',
-].map((n, i) => ({ email: `${n}@${DEMO_DOMAIN}`, days: 3 + i * 6 }));
+  'sumaiya.akter', 'rifat.chowdhury', 'priya.das', 'lamia.islam', 'anika.tabassum', 'tahmina.begum', 'kaniz.fatema', 'nafis.iqbal', 'biplob.saha',
+  'rina.dey', 'hasan.mahmud', 'shaila.parvin', 'tanjim.ahmed', 'maliha.noor', 'raihan.kabir', 'sharif.uddin', 'nabila.haque', 'arafat.rahman',
+  'tamanna.akter', 'sakib.hassan', 'mouri.islam',
+].map((n, i) => ({ email: `${n}@${DEMO_DOMAIN}`, days: (i * 37) % 88 }));
 
 // ---------------------------------------------------------------------------
 // Auth admin API
@@ -1012,6 +1067,25 @@ async function reset() {
 }
 
 // ---------------------------------------------------------------------------
+// --refresh: drop demo ACTIVITY so seed() regenerates it up to today.
+// Catalogue rows, real orders, real customers and the admin are untouched.
+// ---------------------------------------------------------------------------
+
+async function clearActivity() {
+  console.log(`\n${DRY_RUN ? '[dry-run] ' : ''}Clearing demo activity (orders, reviews, messages, subscribers)…`);
+  const users = (await listAllUsers()).filter(isDemoUser);
+  const orders = await demoOrderRows();
+  console.log(`  ${orders.length} demo orders, reviews by ${users.length} demo customers`);
+  if (DRY_RUN) return;
+  if (users.length) await must(sb.from('reviews').delete().in('user_id', users.map((u) => u.id)), 'delete demo reviews');
+  for (let i = 0; i < orders.length; i += 100) {
+    await must(sb.from('orders').delete().in('id', orders.slice(i, i + 100).map((o) => o.id)), 'delete demo orders');
+  }
+  await must(sb.from('contact_messages').delete().like('email', `%@${DEMO_DOMAIN}`), 'delete demo messages');
+  await must(sb.from('newsletter_subscribers').delete().like('email', `%@${DEMO_DOMAIN}`), 'delete demo subscribers');
+}
+
+// ---------------------------------------------------------------------------
 // Seed
 // ---------------------------------------------------------------------------
 
@@ -1026,6 +1100,7 @@ async function seed() {
     ...DEMO_PRODUCTS.flatMap((p) => [p.image, ...p.images]),
     ...Object.values(PRODUCT_IMAGE_FIXES).flatMap((f) => [f.image, ...f.images]),
   ]);
+  if (REFRESH) imageUrls.clear(); // --refresh writes no catalogue rows
   console.log(`Checking ${imageUrls.size} image URLs…`);
   const results = await mapLimit([...imageUrls], 8, async (url) => [url, await checkImage(url)]);
   const broken = results.filter(([, err]) => err);
@@ -1043,8 +1118,8 @@ async function seed() {
   }
 
   // --- Categories (parents before children)
-  console.log(`${W}upsert ${categories.length} categories`);
-  if (!DRY_RUN) {
+  console.log(`${W}upsert ${categories.length} categories${REFRESH ? ' (skipped: --refresh)' : ''}`);
+  if (!DRY_RUN && !REFRESH) {
     await must(sb.from('categories').upsert(categories.filter((c) => !c.parent_id), { onConflict: 'id' }), 'upsert parent categories');
     await must(sb.from('categories').upsert(categories.filter((c) => c.parent_id), { onConflict: 'id' }), 'upsert subcategories');
   }
@@ -1055,16 +1130,16 @@ async function seed() {
   for (const [id, sub] of Object.entries(PRODUCT_SUBCATEGORY)) {
     if (!existingIds.has(id)) continue;
     const patch = { category: sub, ...(PRODUCT_IMAGE_FIXES[id] ?? {}) };
-    if (!DRY_RUN) await must(sb.from('products').update(patch).eq('id', id), `move ${id}`);
+    if (!DRY_RUN && !REFRESH) await must(sb.from('products').update(patch).eq('id', id), `move ${id}`);
   }
-  console.log(`${W}move ${Object.keys(PRODUCT_SUBCATEGORY).length} original products into subcategories`);
+  console.log(`${W}move ${Object.keys(PRODUCT_SUBCATEGORY).length} original products into subcategories${REFRESH ? " (skipped: --refresh)" : ""}`);
 
   // --- Demo products: insert new ones; for existing demo rows refresh catalogue
   // text/images but keep stock, sold_count and rating (they change in real use).
   const productRows = DEMO_PRODUCTS.map(({ rv, ...p }) => ({ ...p, active: true }));
   const newRows = productRows.filter((p) => !existingIds.has(p.id));
-  console.log(`${W}insert ${newRows.length} demo products (${productRows.length - newRows.length} already present)`);
-  if (!DRY_RUN) {
+  console.log(`${W}insert ${newRows.length} demo products (${productRows.length - newRows.length} already present)${REFRESH ? ' (skipped: --refresh)' : ''}`);
+  if (!DRY_RUN && !REFRESH) {
     if (newRows.length) await must(sb.from('products').insert(newRows), 'insert demo products');
     for (const p of productRows.filter((x) => existingIds.has(x.id))) {
       const { stock, sold_count, ...rest } = p;
@@ -1073,8 +1148,8 @@ async function seed() {
   }
 
   // --- Coupons (used_count set after orders)
-  console.log(`${W}upsert ${DEMO_COUPONS.length} demo coupons`);
-  if (!DRY_RUN) {
+  console.log(`${W}upsert ${DEMO_COUPONS.length} demo coupons${REFRESH ? ' (skipped: --refresh)' : ''}`);
+  if (!DRY_RUN && !REFRESH) {
     await must(sb.from('coupons').upsert(DEMO_COUPONS.map(({ base_used, ...c }) => ({ ...c, used_count: base_used })), { onConflict: 'code', ignoreDuplicates: true }), 'insert coupons');
   }
 
@@ -1107,7 +1182,13 @@ async function seed() {
   console.log(`${W}create ${created} demo users (${DEMO_USERS.length - created} already exist)`);
   if (!DRY_RUN) {
     await must(
-      sb.from('profiles').upsert(users.map((u) => ({ id: u.id, full_name: u.name, phone: u.phone, address: u.address, area: u.area, city: 'Dhaka' })), { onConflict: 'id' }),
+      sb.from('profiles').upsert(
+        users.map((u) => ({
+          id: u.id, full_name: u.name, phone: u.phone, address: u.address, area: u.area,
+          city: u.district ?? 'Dhaka', division: u.division ?? 'Dhaka', district: u.district ?? 'Dhaka', upazila: u.area,
+        })),
+        { onConflict: 'id' },
+      ),
       'upsert profiles',
     );
   }
@@ -1177,7 +1258,8 @@ async function seed() {
 
   // --- Revalidate a local storefront if one is running
   try {
-    const res = await fetch('http://localhost:3000/api/revalidate', {
+    const site = (process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000').replace(/\/$/, '');
+    const res = await fetch(`${site}/api/revalidate`, {
       method: 'POST', signal: AbortSignal.timeout(3000),
       headers: { Authorization: `Bearer ${process.env.REVALIDATE_SECRET ?? ''}` },
     });
@@ -1213,6 +1295,9 @@ async function summary() {
 }
 
 if (RESET) await reset();
-else await seed();
+else {
+  if (REFRESH) await clearActivity();
+  await seed();
+}
 if (!DRY_RUN) await summary();
 console.log('');
