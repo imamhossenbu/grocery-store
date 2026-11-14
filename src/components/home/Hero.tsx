@@ -4,8 +4,7 @@ import { SearchBar } from '@/components/store-ui/SearchBar';
 import type { Category, Product } from '@/types/store';
 import { formatBDT } from '@/lib/format';
 import { FREE_DELIVERY_THRESHOLD, discountPercent } from '@/lib/pricing';
-
-const POPULAR_SEARCHES = ['Mango', 'Hilsha', 'Mishti doi', 'Mustard oil', 'Rice', 'Eggs'];
+import { POPULAR_SEARCHES } from '@/lib/constants';
 
 export function Hero({ categories, spotlight }: { categories: Category[]; spotlight?: Product }) {
   const tiles = categories.slice(0, 3);
@@ -33,7 +32,7 @@ export function Hero({ categories, spotlight }: { categories: Category[]; spotli
           </p>
 
           <SearchBar id="hero-search" className="mt-8 max-w-xl" />
-          <div className="mt-4 flex flex-wrap items-center gap-2 text-xs">
+          <div className="mt-4 flex flex-wrap items-center gap-2 text-[13px]">
             <span className="font-semibold text-[#5a7165]">Popular:</span>
             {POPULAR_SEARCHES.map((t) => (
               <Link
@@ -101,7 +100,7 @@ export function Hero({ categories, spotlight }: { categories: Category[]; spotli
             </span>
             <span>
               <span className="block text-sm font-extrabold text-[#112a1d]">Morning slot</span>
-              <span className="block text-xs text-[#5a7165]">Delivered 8 – 11 AM</span>
+              <span className="block text-[13px] text-[#5a7165]">Delivered 8 – 11 AM</span>
             </span>
           </div>
 
@@ -113,11 +112,11 @@ export function Hero({ categories, spotlight }: { categories: Category[]; spotli
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={spotlight.image} alt="" className="h-12 w-12 rounded-xl object-cover" />
               <span>
-                <span className="block text-[11px] font-bold uppercase tracking-widest text-[#f5b82e]">
+                <span className="block text-xs font-bold uppercase tracking-widest text-[#f5b82e]">
                   {pct > 0 ? `Deal · ${pct}% off` : 'Customer favourite'}
                 </span>
                 <span className="block max-w-[11rem] truncate text-sm font-bold">{spotlight.name}</span>
-                <span className="block text-xs text-[#b9d8c5]">
+                <span className="block text-[13px] text-[#b9d8c5]">
                   {formatBDT(spotlight.price)} {pct > 0 && <s className="opacity-70">{formatBDT(spotlight.oldPrice!)}</s>}
                 </span>
               </span>

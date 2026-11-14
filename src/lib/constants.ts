@@ -31,3 +31,6 @@ export const DELIVERY_SLOTS = [
 ] as const;
 
 export const PRODUCTS_PER_PAGE = 12;
+
+/** Shown under the hero search and in the empty header search panel. */
+export const POPULAR_SEARCHES = ['Mango', 'Hilsha', 'Mishti doi', 'Mustard oil', 'Rice', 'Eggs'];

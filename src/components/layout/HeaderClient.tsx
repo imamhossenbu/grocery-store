@@ -58,7 +58,7 @@ export function HeaderClient({ categories, index }: Props) {
         </Link>
 
         <div className="hidden md:block flex-1 max-w-xl">
-          <HeaderSearch index={index} />
+          <HeaderSearch index={index} shortcut />
         </div>
 
         <div className="ml-auto flex items-center gap-1 sm:gap-2">
