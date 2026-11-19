@@ -2,7 +2,7 @@ import 'server-only';
 import { cacheLife, cacheTag } from 'next/cache';
 import { supabaseAdmin, isMissingTableError } from '@/lib/supabase/admin';
 import { INITIAL_STORE_DATA } from '@/lib/seed-data';
-import { toCategory, toCoupon, toProduct, toReview } from './mappers';
+import { toCategory, toCoupon, toProduct, toReview, toVariant } from './mappers';
 import type { Category, CategoryNode, CategoryWithCount, Coupon, Product, Review } from '@/types/store';
 
 /**
@@ -22,9 +22,10 @@ async function loadCatalog(): Promise<{ categories: Category[]; products: Produc
   cacheTag('catalog');
 
   const db = supabaseAdmin();
-  const [cats, prods] = await Promise.all([
+  const [cats, prods, sizes] = await Promise.all([
     db.from('categories').select('*').order('sort_order').order('name'),
     db.from('products').select('*').eq('active', true),
+    db.from('product_variants').select('*').order('sort_order').order('created_at').order('id'),
   ]);
 
   if (isMissingTableError(cats.error) || isMissingTableError(prods.error)) {
@@ -37,9 +38,23 @@ async function loadCatalog(): Promise<{ categories: Category[]; products: Produc
   if (cats.error) throw new Error(`categories: ${cats.error.message}`);
   if (prods.error) throw new Error(`products: ${prods.error.message}`);
 
+  // Sizes were added later: a database without the product_variants table
+  // simply has none.
+  if (sizes.error && !isMissingTableError(sizes.error)) throw new Error(`product_variants: ${sizes.error.message}`);
+  const sizesByProduct = new Map<string, Record<string, unknown>[]>();
+  for (const row of sizes.data ?? []) {
+    const list = sizesByProduct.get(String(row.product_id)) ?? [];
+    list.push(row);
+    sizesByProduct.set(String(row.product_id), list);
+  }
+
   return {
     categories: (cats.data ?? []).map(toCategory),
-    products: (prods.data ?? []).map(toProduct),
+    products: (prods.data ?? []).map((row) => {
+      const product = toProduct(row);
+      const rows = sizesByProduct.get(product.id);
+      return rows?.length ? { ...product, variants: rows.map(toVariant) } : product;
+    }),
     live: true,
   };
 }

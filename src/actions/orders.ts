@@ -28,6 +28,7 @@ import type {
   TrackState,
 } from '@/components/order/types';
 import type { Coupon, ProductSnapshot } from '@/types/store';
+import { VARIANT_ID_RE, lineKey, snapshotForLine } from '@/lib/variants';
 
 // ---------------------------------------------------------------------------
 // Basic abuse protection
@@ -63,7 +64,7 @@ async function clientIp(): Promise<string> {
 }
 
 // ---------------------------------------------------------------------------
-// Cart inputs: only product ids and quantities ever come from the client.
+// Cart inputs: only product ids, size ids and quantities ever come from the client.
 // ---------------------------------------------------------------------------
 
 const PRODUCT_ID_RE = /^[A-Za-z0-9_-]{1,80}$/;
@@ -71,33 +72,50 @@ const MAX_LINES = 60;
 
 function sanitizeLines(input: unknown): CartLine[] | null {
   if (!Array.isArray(input) || input.length === 0 || input.length > MAX_LINES) return null;
-  const merged = new Map<string, number>();
+  const merged = new Map<string, CartLine>();
   for (const raw of input) {
     if (!raw || typeof raw !== 'object') return null;
-    const { id, qty } = raw as { id?: unknown; qty?: unknown };
+    const { id, qty, variantId: rawVariant } = raw as { id?: unknown; qty?: unknown; variantId?: unknown };
     if (typeof id !== 'string' || !PRODUCT_ID_RE.test(id)) return null;
     if (typeof qty !== 'number' || !Number.isInteger(qty) || qty < 1 || qty > 99) return null;
-    merged.set(id, Math.min(99, (merged.get(id) ?? 0) + qty));
+    let variantId: string | undefined;
+    if (rawVariant !== undefined && rawVariant !== null && rawVariant !== '') {
+      if (typeof rawVariant !== 'string' || !VARIANT_ID_RE.test(rawVariant)) return null;
+      variantId = rawVariant.toLowerCase();
+    }
+    const key = lineKey({ id, variantId });
+    const prior = merged.get(key);
+    merged.set(key, { id, ...(variantId ? { variantId } : {}), qty: Math.min(99, (prior?.qty ?? 0) + qty) });
   }
-  return [...merged].map(([id, qty]) => ({ id, qty }));
+  return [...merged.values()];
 }
 
-/** Fresh price and stock for the products in the shopper's basket. */
-export async function refreshCart(ids: string[]): Promise<CartRefreshResult> {
-  if (!Array.isArray(ids)) return { ok: false, products: [] };
-  const clean = [...new Set(ids.filter((id) => typeof id === 'string' && PRODUCT_ID_RE.test(id)))].slice(0, MAX_LINES);
-  if (clean.length === 0) return { ok: true, products: [] };
+/**
+ * Fresh price and stock for the lines in the shopper's basket. A line that
+ * can no longer be bought as it is (product or size gone, or the product is
+ * sold in sizes now) is left out of the result.
+ */
+export async function refreshCart(lines: { id: string; variantId?: string }[]): Promise<CartRefreshResult> {
+  if (!Array.isArray(lines)) return { ok: false, products: [] };
+  const clean = new Map<string, { id: string; variantId?: string }>();
+  for (const raw of lines.slice(0, MAX_LINES * 2)) {
+    if (!raw || typeof raw !== 'object') continue;
+    const { id, variantId } = raw as { id?: unknown; variantId?: unknown };
+    if (typeof id !== 'string' || !PRODUCT_ID_RE.test(id)) continue;
+    const size = typeof variantId === 'string' && VARIANT_ID_RE.test(variantId) ? variantId.toLowerCase() : undefined;
+    clean.set(lineKey({ id, variantId: size }), { id, ...(size ? { variantId: size } : {}) });
+    if (clean.size >= MAX_LINES) break;
+  }
+  if (clean.size === 0) return { ok: true, products: [] };
   try {
-    const products = await getProductsByIds(clean);
-    const fresh: ProductSnapshot[] = products.map((p) => ({
-      id: p.id,
-      name: p.name,
-      unit: p.unit,
-      price: p.price,
-      oldPrice: p.oldPrice,
-      image: p.image,
-      stock: p.stock,
-    }));
+    const products = await getProductsByIds([...new Set([...clean.values()].map((l) => l.id))]);
+    const byId = new Map(products.map((p) => [p.id, p]));
+    const fresh: ProductSnapshot[] = [];
+    for (const line of clean.values()) {
+      const product = byId.get(line.id);
+      const snap = product ? snapshotForLine(product, line.variantId) : null;
+      if (snap) fresh.push(snap);
+    }
     return { ok: true, products: fresh };
   } catch {
     return { ok: false, products: [] };
@@ -157,8 +175,11 @@ export async function validateCoupon(rawCode: string, lines: CartLine[]): Promis
       return { ok: false, error: `Coupon ${code} has reached its usage limit.` };
     }
 
-    const price = new Map(products.map((p) => [p.id, p.price]));
-    const subtotal = items.reduce((s, i) => s + (price.get(i.id) ?? 0) * i.qty, 0);
+    const byId = new Map(products.map((p) => [p.id, p]));
+    const subtotal = items.reduce((s, i) => {
+      const product = byId.get(i.id);
+      return s + ((product && snapshotForLine(product, i.variantId)?.price) || 0) * i.qty;
+    }, 0);
     if (subtotal < coupon.minSubtotal) {
       return {
         ok: false,
@@ -199,6 +220,18 @@ function mapPlaceOrderError(raw: string, couponCode: string | null): Pick<PlaceO
     return {
       productId,
       message: 'An item in your basket is no longer available. Please remove it and try again.',
+    };
+  }
+  if (msg.startsWith('VARIANT_REQUIRED:')) {
+    return {
+      productId: msg.slice('VARIANT_REQUIRED:'.length),
+      message: 'An item in your basket is now sold in several sizes. Please remove it and add the size you want from its page.',
+    };
+  }
+  if (msg.startsWith('VARIANT_UNAVAILABLE:')) {
+    return {
+      productId: msg.slice('VARIANT_UNAVAILABLE:'.length),
+      message: 'A size in your basket is no longer available. Please remove it and pick another size from the product page.',
     };
   }
   if (msg.startsWith('OUT_OF_STOCK:')) {
@@ -337,7 +370,7 @@ export async function placeOrder(_prev: PlaceOrderState, formData: FormData): Pr
 
   const { data, error } = await supabaseAdmin().rpc('place_order', {
     p_customer: customer,
-    p_items: lines.map((l) => ({ productId: l.id, qty: l.qty })),
+    p_items: lines.map((l) => ({ productId: l.id, qty: l.qty, ...(l.variantId ? { variantId: l.variantId } : {}) })),
     p_coupon_code: couponCode,
     p_user_id: userId,
     // Only sent for online orders, so cash-on-delivery keeps working against

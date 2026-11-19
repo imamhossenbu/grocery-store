@@ -11,7 +11,7 @@ import { DELIVERY_SLOTS, SITE_NAME, SITE_URL } from '@/lib/constants';
 import { Breadcrumbs } from '@/components/ui/Breadcrumbs';
 import { ProductGrid } from '@/components/product/ProductCard';
 import { ProductGallery } from '@/components/product/ProductGallery';
-import { ProductPurchasePanel } from '@/components/product/ProductPurchasePanel';
+import { ProductBuyBox } from '@/components/product/ProductBuyBox';
 import { ProductTabs } from '@/components/product/ProductTabs';
 import { RecentlyViewed } from '@/components/product/RecentlyViewed';
 import { ReviewsSection, reviewStats } from '@/components/product/ReviewsSection';
@@ -69,9 +69,6 @@ async function ProductDetail({ params }: { params: Params }) {
 
   const category = path.at(-1);
   const pct = discountPercent(product.price, product.oldPrice);
-  const saved = pct ? product.oldPrice! - product.price : 0;
-  const out = product.stock <= 0;
-  const low = !out && product.stock <= 20;
   const images = [...new Set([product.image, ...(product.images ?? [])].filter(Boolean))];
   const { count, average } = reviewStats(product, reviews);
   const url = `${SITE_URL}/product/${product.id}`;
@@ -90,7 +87,7 @@ async function ProductDetail({ params }: { params: Params }) {
       url,
       priceCurrency: 'BDT',
       price: product.price.toFixed(2),
-      availability: out ? 'https://schema.org/OutOfStock' : 'https://schema.org/InStock',
+      availability: product.stock <= 0 ? 'https://schema.org/OutOfStock' : 'https://schema.org/InStock',
       itemCondition: 'https://schema.org/NewCondition',
       seller: { '@type': 'Organization', name: SITE_NAME },
     },
@@ -166,7 +163,7 @@ async function ProductDetail({ params }: { params: Params }) {
           <p>{product.description}</p>
           <dl className="grid grid-cols-1 gap-x-8 gap-y-2 rounded-2xl bg-[#f0f7f2] p-5 text-sm sm:grid-cols-2">
             {[
-              ['Pack size', product.unit],
+              [product.variants?.length ? 'Sizes' : 'Pack size', product.variants?.length ? product.variants.map((v) => v.label).join(', ') : product.unit],
               ['Category', path.length ? path.map((c) => c.name).join(' › ') : product.category],
               ['Origin', product.origin],
               ['SKU', product.sku],
@@ -267,28 +264,7 @@ async function ProductDetail({ params }: { params: Params }) {
               )}
             </div>
 
-            <div className="mt-6 rounded-3xl border border-[#dfece3] bg-white p-5 shadow-soft">
-              <div className="flex flex-wrap items-end gap-x-3 gap-y-1">
-                <span className="font-display text-4xl font-bold text-[#1a663b]">{formatBDT(product.price)}</span>
-                {pct > 0 && <span className="pb-1 text-lg text-[#7e9688] line-through">{formatBDT(product.oldPrice!)}</span>}
-                <span className="pb-1.5 text-sm text-[#5a7165]">/ {product.unit}</span>
-              </div>
-              {pct > 0 && (
-                <p className="mt-2 inline-flex rounded-full bg-[#fef3c7] px-3 py-1 text-xs font-extrabold text-[#78350f]">
-                  You save {formatBDT(saved)} ({pct}%)
-                </p>
-              )}
-              <p
-                className={`mt-3 flex items-center gap-2 text-sm font-bold ${out ? 'text-red-600' : low ? 'text-amber-700' : 'text-emerald-700'}`}
-              >
-                <span className={`h-2.5 w-2.5 rounded-full ${out ? 'bg-red-500' : low ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`} aria-hidden />
-                {out ? 'Out of stock — check back tomorrow morning' : low ? `Only ${product.stock} left in stock — order soon` : 'In stock, ready for same-day delivery'}
-              </p>
-
-              <div className="mt-5">
-                <ProductPurchasePanel product={product} />
-              </div>
-            </div>
+            <ProductBuyBox product={product} />
 
             <ul className="mt-5 grid gap-3 sm:grid-cols-2">
               {[

@@ -47,7 +47,11 @@ export function RetryCheckoutButton({ items }: { items: OrderItem[] }) {
       type="button"
       onClick={() => {
         for (const i of items) {
-          addToCart({ id: i.productId, name: i.name, unit: i.unit, price: i.price, image: i.image, stock: 99 }, i.qty, { silent: true });
+          addToCart(
+            { id: i.productId, name: i.name, unit: i.unit, price: i.price, image: i.image, stock: 99, ...(i.variantId ? { variantId: i.variantId } : {}) },
+            i.qty,
+            { silent: true }
+          );
         }
         router.push('/checkout');
       }}

@@ -30,7 +30,7 @@ export function CouponBox({ coupons, compact = false }: { coupons: Coupon[]; com
     setError(null);
     setPendingCode(value);
     startTransition(async () => {
-      const res = await validateCoupon(value, cart.map((i) => ({ id: i.id, qty: i.qty })));
+      const res = await validateCoupon(value, cart.map((i) => ({ id: i.id, qty: i.qty, ...(i.variantId ? { variantId: i.variantId } : {}) })));
       setPendingCode(null);
       if (res.ok) {
         setCoupon(res.coupon);

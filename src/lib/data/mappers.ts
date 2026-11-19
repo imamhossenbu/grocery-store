@@ -1,4 +1,4 @@
-import { PAYMENT_STATUSES, type Category, type Coupon, type Order, type OrderStatus, type PaymentStatus, type Product, type Review } from '@/types/store';
+import { PAYMENT_STATUSES, type Category, type Coupon, type Order, type OrderStatus, type PaymentStatus, type Product, type ProductVariant, type Review } from '@/types/store';
 
 type Row = Record<string, unknown>;
 const num = (v: unknown) => (v === null || v === undefined || v === '' ? undefined : Number(v));
@@ -44,6 +44,18 @@ export function toProduct(r: Row): Product {
   };
 }
 
+export function toVariant(r: Row): ProductVariant {
+  const sku = str(r.sku)?.trim();
+  return {
+    id: String(r.id),
+    label: String(r.label),
+    price: Number(r.price),
+    oldPrice: num(r.old_price),
+    stock: Number(r.stock ?? 0),
+    ...(sku ? { sku } : {}),
+  };
+}
+
 export function toCoupon(r: Row): Coupon {
   return {
     code: String(r.code),
@@ -79,6 +91,7 @@ export function toOrder(r: Row): Order {
     },
     items: ((r.items as Row[]) ?? []).map((i) => ({
       productId: String(i.productId),
+      ...(typeof i.variantId === 'string' && i.variantId ? { variantId: i.variantId } : {}),
       name: String(i.name),
       unit: String(i.unit),
       price: Number(i.price),

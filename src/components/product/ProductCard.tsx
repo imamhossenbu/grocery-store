@@ -3,6 +3,7 @@ import { Leaf, Star } from 'lucide-react';
 import type { Product } from '@/types/store';
 import { formatBDT } from '@/lib/format';
 import { discountPercent } from '@/lib/pricing';
+import { lowestPrice } from '@/lib/variants';
 import { AddToCartButton } from './AddToCartButton';
 import { WishlistButton } from './WishlistButton';
 
@@ -11,6 +12,11 @@ export function ProductCard({ product, priority = false }: { product: Product; p
   const low = !out && product.stock <= 20;
   const pct = discountPercent(product.price, product.oldPrice);
   const href = `/product/${product.id}`;
+  // Sold in sizes: show the cheapest one as "From …" and how many there are.
+  const sizes = product.variants?.length ?? 0;
+  const from = lowestPrice(product);
+  const priceVaries = sizes > 1 && product.variants!.some((v) => v.price !== from);
+  const unitText = sizes > 1 ? `${sizes} sizes` : product.unit;
 
   return (
     <article className="group relative flex flex-col overflow-hidden rounded-[1.75rem] border border-[#dfece3] bg-white shadow-soft transition-all duration-300 hover:-translate-y-1 hover:border-[#1a663b]/40 hover:shadow-card">
@@ -43,7 +49,7 @@ export function ProductCard({ product, priority = false }: { product: Product; p
 
       <div className="flex flex-1 flex-col p-4">
         <div className="flex items-center justify-between gap-2 text-[13px] text-[#5a7165]">
-          <span className="min-w-0 truncate text-xs font-semibold bg-[#f0f7f2] text-[#1a663b] px-2.5 py-0.5 rounded-full" title={product.unit}>{product.unit}</span>
+          <span className="min-w-0 truncate text-xs font-semibold bg-[#f0f7f2] text-[#1a663b] px-2.5 py-0.5 rounded-full" title={sizes > 1 ? product.variants!.map((v) => v.label).join(', ') : product.unit}>{unitText}</span>
           <span className="inline-flex shrink-0 items-center gap-1 font-bold text-[#112a1d]">
             <Star className="w-3.5 h-3.5 fill-[#f5b82e] text-[#f5b82e]" />
             {product.rating.toFixed(1)}
@@ -56,8 +62,17 @@ export function ProductCard({ product, priority = false }: { product: Product; p
         <div className="mt-auto pt-3">
           <div className="flex items-baseline justify-between gap-2">
             <div className="flex items-baseline gap-1.5">
-              <span className="text-lg font-extrabold text-[#1a663b]">{formatBDT(product.price)}</span>
-              {pct > 0 && <span className="text-[13px] text-[#5a7165] line-through">{formatBDT(product.oldPrice!)}</span>}
+              {priceVaries ? (
+                <span className="text-lg font-extrabold text-[#1a663b]">
+                  <span className="text-xs font-semibold text-[#5a7165]">From </span>
+                  {formatBDT(from)}
+                </span>
+              ) : (
+                <>
+                  <span className="text-lg font-extrabold text-[#1a663b]">{formatBDT(product.price)}</span>
+                  {pct > 0 && <span className="text-[13px] text-[#5a7165] line-through">{formatBDT(product.oldPrice!)}</span>}
+                </>
+              )}
             </div>
             <span className={`text-xs font-bold ${out ? 'text-red-600' : low ? 'text-amber-600' : 'text-emerald-700'}`}>
               {out ? 'Sold out' : low ? `Only ${product.stock} left` : 'In stock'}

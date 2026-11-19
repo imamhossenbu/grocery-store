@@ -3,13 +3,17 @@ import type { CheckoutInput, FieldErrors } from './validation';
 
 /** Shapes returned by the Server Actions in src/actions/orders.ts. */
 
+/** One basket line as the client sends it: ids and a quantity, never prices. */
 export interface CartLine {
   id: string;
+  /** The chosen size, for a product sold in sizes. */
+  variantId?: string;
   qty: number;
 }
 
 export interface CartRefreshResult {
   ok: boolean;
+  /** One snapshot per line that can still be bought (a size line carries its variantId). */
   products: ProductSnapshot[];
 }
 

@@ -11,6 +11,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Pagination, usePagedList } from '@/components/ui/Pagination';
 import { ProductGridSkeleton, Skeleton } from '@/components/ui/Skeleton';
 import type { ProductSnapshot } from '@/types/store';
+import { toSnapshot } from '@/lib/variants';
 import { Reveal } from '@/components/ui/motion';
 
 interface Row {
@@ -34,7 +35,7 @@ export function WishlistView() {
       .then((products) => {
         if (cancelled) return;
         const byId = new Map<string, ProductSnapshot>(
-          products.map((p) => [p.id, { id: p.id, name: p.name, unit: p.unit, price: p.price, oldPrice: p.oldPrice, image: p.image, stock: p.stock }])
+          products.map((p) => [p.id, toSnapshot(p)])
         );
         setFresh({ key: idsKey, byId });
         setRefreshFailed(false);
@@ -59,7 +60,8 @@ export function WishlistView() {
     };
   });
   const pager = usePagedList(rows, { param: 'page', sizeParam: 'size', defaultSize: 12, sizeOptions: [12, 24, 48], scrollTargetId: 'wishlist-grid' });
-  const addable = rows.filter((r) => r.available && r.current.stock > 0 && getQty(r.current.id) === 0);
+  // A product sold in sizes needs a size picked on its page first.
+  const addable = rows.filter((r) => r.available && !r.current.hasVariants && r.current.stock > 0 && getQty(r.current.id) === 0);
 
   if (!hydrated) {
     return (
@@ -117,8 +119,7 @@ export function WishlistView() {
               row={row}
               inBasket={getQty(row.current.id)}
               onMove={() => {
-                addToCart(row.current, 1);
-                toggleWishlist(row.saved);
+                if (addToCart(row.current, 1)) toggleWishlist(row.saved);
               }}
               onRemove={() => toggleWishlist(row.saved)}
             />
@@ -186,17 +187,27 @@ function WishlistCard({ row, inBasket, onMove, onRemove }: { row: Row; inBasket:
               {out ? 'Sold out' : low ? `Only ${p.stock} left` : 'In stock'}
             </span>
           </div>
-          <button
-            type="button"
-            onClick={onMove}
-            disabled={out}
-            className={`mt-3 inline-flex h-10 w-full items-center justify-center gap-2 rounded-full text-xs font-semibold transition active:scale-[0.98] sm:text-sm cursor-pointer disabled:cursor-not-allowed ${
-              out ? 'bg-[#eef3f0] text-[#3f5649]' : 'bg-emerald-gradient text-white shadow-glow hover:brightness-105'
-            }`}
-          >
-            <ShoppingBasket className="h-4 w-4" />
-            {out ? 'Unavailable' : 'Move to basket'}
-          </button>
+          {p.hasVariants && !out ? (
+            <Link
+              href={`/product/${p.id}`}
+              className="mt-3 inline-flex h-10 w-full items-center justify-center gap-2 rounded-full bg-emerald-gradient text-xs font-semibold text-white shadow-glow transition hover:brightness-105 active:scale-[0.98] sm:text-sm"
+            >
+              <ShoppingBasket className="h-4 w-4" />
+              Choose a size
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={onMove}
+              disabled={out}
+              className={`mt-3 inline-flex h-10 w-full items-center justify-center gap-2 rounded-full text-xs font-semibold transition active:scale-[0.98] sm:text-sm cursor-pointer disabled:cursor-not-allowed ${
+                out ? 'bg-[#eef3f0] text-[#3f5649]' : 'bg-emerald-gradient text-white shadow-glow hover:brightness-105'
+              }`}
+            >
+              <ShoppingBasket className="h-4 w-4" />
+              {out ? 'Unavailable' : 'Move to basket'}
+            </button>
+          )}
           {inBasket > 0 && !out && (
             <p className="mt-1.5 text-center text-[13px] font-medium text-[#3f5649]">{inBasket} already in your basket</p>
           )}

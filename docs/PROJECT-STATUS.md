@@ -83,6 +83,17 @@ Never tested:
 - Tested against a local mail catcher by calling the storefront endpoint directly (auth, wrong status, repeat, toggle back and forth, bulk, paid-and-cancelled wording). **Not tested:** the click in the admin panel that triggers it, and delivery through real Gmail SMTP.
 - Cancellations made by the payment functions (failed or expired online payment) send no email. SMS is not built.
 
+## Product sizes / variants (added 19 Nov 2026, branch `feature/product-variants`)
+
+- **Needs a database update first:** run `supabase/schema.sql` in the Supabase SQL editor (safe to re-run). Until then both apps work as before and no product can have sizes; saving sizes in the admin shows a "run schema.sql" message.
+- A product can have sizes (`product_variants`: label, price, old price, stock, SKU, order). A product without sizes is unchanged.
+- For a product with sizes the database keeps `products.unit/price/old_price` equal to the **first** size and `products.stock` equal to the total of all sizes (trigger `sync_product_from_variants`), so listings, sorting and filters still read the products table.
+- `place_order()` takes an optional `variantId` per item: price, unit and stock then come from that size and the order line stores the `variantId`. `set_order_status()` puts stock back on the size when an order is cancelled.
+- Storefront: size picker on the product page; cards show "From ৳…" and link to the product page instead of adding directly; basket lines are per size.
+- Admin: "Sizes" card in the product form (add, reorder, remove). The quick stock edit in the product list refuses products with sizes.
+- Tested: the SQL (26 checks in an in-memory Postgres: ordering, stock, cancel/re-open, editing and deleting sizes). Both apps type-check and lint, and the storefront pages load against the database **without** the new table. **Not tested:** anything with a real size in it — the size picker, a basket/checkout with sizes and the admin "Sizes" card have not been seen running.
+- Limits: sizes have no images of their own; the catalog query is not paginated, so Supabase's default 1000-row cap applies to sizes as it does to products.
+
 ## Not done yet
 
 Storefront

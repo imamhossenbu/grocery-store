@@ -22,6 +22,17 @@ export interface CategoryNode extends CategoryWithCount {
   children: CategoryNode[];
 }
 
+/** One pack size of a product, with its own price and stock. */
+export interface ProductVariant {
+  id: string;
+  /** Shown where a plain product shows its unit, e.g. "1 kg". */
+  label: string;
+  price: number;
+  oldPrice?: number;
+  stock: number;
+  sku?: string;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -44,6 +55,12 @@ export interface Product {
   nutrition?: string;
   tags?: string[];
   createdAt?: string;
+  /**
+   * Pack sizes, in display order. Absent or empty for a plain product. When
+   * present, `unit`/`price`/`oldPrice` above are those of the first size and
+   * `stock` is the total of all sizes (kept so by the database).
+   */
+  variants?: ProductVariant[];
 }
 
 export interface Coupon {
@@ -59,6 +76,8 @@ export interface Coupon {
 
 export interface OrderItem {
   productId: string;
+  /** The size that was bought; absent for a plain product. */
+  variantId?: string;
   name: string;
   unit: string;
   price: number;
@@ -155,6 +174,10 @@ export interface ProductSnapshot {
   oldPrice?: number;
   image: string;
   stock: number;
+  /** Set on a basket line for one size; unit, price and stock are then that size's. */
+  variantId?: string;
+  /** The product is sold in sizes, so one must be chosen before it can go in the basket. */
+  hasVariants?: boolean;
 }
 
 export interface CartItem extends ProductSnapshot {

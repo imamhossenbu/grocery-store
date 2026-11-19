@@ -19,6 +19,7 @@ import {
   Truck,
   UserRound,
 } from 'lucide-react';
+import { lineKey } from '@/lib/variants';
 import { useShop } from '@/context/ShopContext';
 import { placeOrder } from '@/actions/orders';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -231,7 +232,7 @@ export function CheckoutForm({ live, signedIn, email, profile, coupons, onlinePa
     const fd = new FormData(e.currentTarget);
     fd.set('day', day);
     fd.set('slot', slot);
-    fd.set('items', JSON.stringify(cart.map((i) => ({ id: i.id, qty: i.qty }))));
+    fd.set('items', JSON.stringify(cart.map((i) => ({ id: i.id, qty: i.qty, ...(i.variantId ? { variantId: i.variantId } : {}) }))));
     fd.set('coupon', coupon && subtotal >= coupon.minSubtotal ? coupon.code : '');
     fd.set('paymentMethod', onlinePayment ? payment : 'cod');
     submissionId.current ??= crypto.randomUUID();
@@ -270,7 +271,7 @@ export function CheckoutForm({ live, signedIn, email, profile, coupons, onlinePa
     <div className="space-y-4">
       <ul className="max-h-72 space-y-3 overflow-y-auto pr-1">
         {cart.map((item) => (
-          <li key={item.id} className={`flex items-center gap-3 rounded-2xl ${item.id === state.productId ? 'bg-red-50 p-1.5 ring-1 ring-red-200' : ''}`}>
+          <li key={lineKey(item)} className={`flex items-center gap-3 rounded-2xl ${item.id === state.productId ? 'bg-red-50 p-1.5 ring-1 ring-red-200' : ''}`}>
             <span className="relative shrink-0">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={item.image} alt="" className="h-14 w-14 rounded-xl bg-[#f0f7f2] object-cover" />

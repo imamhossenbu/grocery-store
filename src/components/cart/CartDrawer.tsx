@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'motion/react';
 import { ShoppingBasket, Trash2, Truck } from 'lucide-react';
+import { lineKey } from '@/lib/variants';
 import { useShop } from '@/context/ShopContext';
 import { formatBDT } from '@/lib/format';
 import { Drawer } from '@/components/ui/Dialog';
@@ -55,7 +56,7 @@ export function CartDrawer() {
             <AnimatePresence initial={false}>
               {cart.map((item) => (
                 <motion.li
-                  key={item.id}
+                  key={lineKey(item)}
                   layout
                   initial={{ opacity: 0, x: 24 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -74,7 +75,7 @@ export function CartDrawer() {
                         </Link>
                         <button
                           type="button"
-                          onClick={() => removeFromCart(item.id)}
+                          onClick={() => removeFromCart(item.id, item.variantId)}
                           aria-label={`Remove ${item.name}`}
                           className="fb-press -mr-1.5 -mt-1 grid h-8 w-8 shrink-0 place-items-center rounded-full text-[#3f5649] hover:bg-red-50 hover:text-red-600 cursor-pointer"
                         >
@@ -91,7 +92,7 @@ export function CartDrawer() {
                           value={item.qty}
                           min={1}
                           max={Math.max(1, Math.min(item.stock, 99))}
-                          onValueChange={(n) => setQty(item.id, n)}
+                          onValueChange={(n) => setQty(item.id, n, item.variantId)}
                         />
                         <span className="text-sm font-extrabold tabular-nums text-[#112a1d]">{formatBDT(item.price * item.qty)}</span>
                       </div>

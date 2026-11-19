@@ -914,3 +914,409 @@ revoke all on function place_order(jsonb, jsonb, text, uuid, text)     from publ
 grant execute on function place_order(jsonb, jsonb, text, uuid, text)  to service_role;
 
 notify pgrst, 'reload schema';
+
+-- ---------------------------------------------------------------------------
+-- Product sizes (variants): one product sold in several pack sizes, each with
+-- its own price and stock (500 g / 1 kg / 5 kg). A product with no rows here
+-- works exactly as before.
+--
+-- For a product that has sizes, products.unit / price / old_price always
+-- mirror its FIRST size (lowest sort_order) and products.stock is the total
+-- of all sizes. The trigger below keeps that true, so listings, sorting,
+-- price filters and "in stock" checks keep reading the products table.
+-- ---------------------------------------------------------------------------
+
+create table if not exists product_variants (
+  id          uuid primary key default gen_random_uuid(),
+  product_id  text not null references products(id) on update cascade on delete cascade,
+  label       text not null check (length(trim(label)) > 0),   -- shown as the unit, e.g. '1 kg'
+  price       numeric(10,2) not null check (price >= 0),
+  old_price   numeric(10,2) check (old_price is null or old_price >= 0),
+  stock       int  not null default 0 check (stock >= 0),
+  sku         text not null default '',
+  sort_order  int  not null default 0,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+
+create index if not exists product_variants_product_idx on product_variants (product_id, sort_order);
+
+alter table product_variants enable row level security;
+
+drop policy if exists "Public can read sizes of active products" on product_variants;
+create policy "Public can read sizes of active products" on product_variants
+  for select to anon, authenticated
+  using (exists (select 1 from products p where p.id = product_id and p.active));
+
+revoke all on product_variants from anon, authenticated;
+grant select on product_variants to anon, authenticated;
+grant all on product_variants to service_role;
+
+create or replace function sync_product_from_variants()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_ids   text[];
+  v_id    text;
+  v_first product_variants%rowtype;
+  v_stock int;
+begin
+  if tg_op = 'DELETE' then
+    v_ids := array[old.product_id];
+  elsif tg_op = 'UPDATE' and old.product_id <> new.product_id then
+    v_ids := array[old.product_id, new.product_id];
+  else
+    v_ids := array[new.product_id];
+  end if;
+
+  foreach v_id in array v_ids loop
+    select * into v_first from product_variants
+      where product_id = v_id
+      order by sort_order, created_at, id
+      limit 1;
+    -- Last size removed: the product keeps the values it has and is a plain
+    -- product again.
+    continue when not found;
+    select coalesce(sum(stock), 0) into v_stock from product_variants where product_id = v_id;
+    update products
+      set unit = v_first.label, price = v_first.price, old_price = v_first.old_price,
+          stock = v_stock, updated_at = now()
+      where id = v_id
+        and (unit, price, old_price, stock) is distinct from (v_first.label, v_first.price, v_first.old_price, v_stock);
+  end loop;
+  return null;
+end;
+$$;
+
+drop trigger if exists product_variants_sync on product_variants;
+create trigger product_variants_sync
+  after insert or update or delete on product_variants
+  for each row execute function sync_product_from_variants();
+
+-- save_product_variants: used by the admin panel's product form. Replaces a
+-- product's sizes with the given list in one transaction: entries with a
+-- known id are updated in place (orders refer to sizes by id, so ids must
+-- stay stable), entries without one are inserted, sizes that are not in the
+-- list are deleted. The array order becomes the display order.
+-- p_variants: [{ "id"?: uuid, "label": text, "price": n, "oldPrice"?: n, "stock": n, "sku"?: text }]
+create or replace function save_product_variants(p_product_id text, p_variants jsonb)
+returns int
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v       jsonb;
+  v_idx   int := 0;
+  v_id    uuid;
+  v_keep  uuid[] := '{}';
+begin
+  perform 1 from products where id = p_product_id for update;
+  if not found then
+    raise exception 'PRODUCT_NOT_FOUND';
+  end if;
+  if p_variants is null or jsonb_typeof(p_variants) <> 'array' then
+    raise exception 'INVALID_VARIANTS';
+  end if;
+
+  for v in
+    select t.value from jsonb_array_elements(p_variants) with ordinality as t(value, n) order by t.n
+  loop
+    v_id := nullif(v->>'id', '')::uuid;
+    if v_id is not null then
+      update product_variants
+        set label = trim(v->>'label'),
+            price = (v->>'price')::numeric,
+            old_price = nullif(v->>'oldPrice', '')::numeric,
+            stock = (v->>'stock')::int,
+            sku = coalesce(v->>'sku', ''),
+            sort_order = v_idx,
+            updated_at = now()
+        where id = v_id and product_id = p_product_id;
+      if not found then
+        v_id := null;   -- unknown id (deleted meanwhile): add it as a new size
+      end if;
+    end if;
+    if v_id is null then
+      insert into product_variants (product_id, label, price, old_price, stock, sku, sort_order)
+        values (p_product_id, trim(v->>'label'), (v->>'price')::numeric, nullif(v->>'oldPrice', '')::numeric,
+                (v->>'stock')::int, coalesce(v->>'sku', ''), v_idx)
+        returning id into v_id;
+    end if;
+    v_keep := v_keep || v_id;
+    v_idx := v_idx + 1;
+  end loop;
+
+  delete from product_variants where product_id = p_product_id and not (id = any(v_keep));
+  return v_idx;
+end;
+$$;
+
+-- place_order with sizes. Same signature and behaviour as the definition
+-- above, plus: an item may carry "variantId". Then price, unit and stock come
+-- from that size, and the stored order line keeps the variantId. An item
+-- without one is refused when the product has sizes (VARIANT_REQUIRED).
+create or replace function place_order(
+  p_customer       jsonb,
+  p_items          jsonb,
+  p_coupon_code    text default null,
+  p_user_id        uuid default null,
+  p_payment_method text default 'cod'
+) returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_item       jsonb;
+  v_qty        int;
+  v_product    products%rowtype;
+  v_variant    product_variants%rowtype;
+  v_variant_id text;
+  v_unit       text;
+  v_price      numeric;
+  v_coupon     coupons%rowtype;
+  v_lines      jsonb := '[]'::jsonb;
+  v_subtotal   numeric := 0;
+  v_discount   numeric := 0;
+  v_fee        numeric := 0;
+  v_code       text := nullif(upper(trim(coalesce(p_coupon_code, ''))), '');
+  v_id         text;
+  v_order      orders%rowtype;
+  v_method     text := lower(trim(coalesce(p_payment_method, 'cod')));
+  v_total      numeric;
+begin
+  if v_method not in ('cod', 'sslcommerz') then
+    raise exception 'INVALID_PAYMENT_METHOD';
+  end if;
+
+  if p_items is null or jsonb_typeof(p_items) <> 'array' or jsonb_array_length(p_items) = 0 then
+    raise exception 'EMPTY_CART';
+  end if;
+
+  -- Lock rows in a stable order so two concurrent orders cannot deadlock.
+  for v_item in
+    select value from jsonb_array_elements(p_items)
+      order by value->>'productId', coalesce(value->>'variantId', '')
+  loop
+    v_qty := (v_item->>'qty')::int;
+    if v_qty is null or v_qty < 1 or v_qty > 99 then
+      raise exception 'INVALID_QTY';
+    end if;
+
+    select * into v_product from products
+      where id = v_item->>'productId' and active
+      for update;
+    if not found then
+      raise exception 'PRODUCT_UNAVAILABLE:%', coalesce(v_item->>'productId', '');
+    end if;
+
+    v_variant_id := nullif(trim(coalesce(v_item->>'variantId', '')), '');
+
+    if v_variant_id is null then
+      if exists (select 1 from product_variants where product_id = v_product.id) then
+        raise exception 'VARIANT_REQUIRED:%', v_product.id;
+      end if;
+      if v_product.stock < v_qty then
+        raise exception 'OUT_OF_STOCK:%:%', v_product.stock, v_product.name;
+      end if;
+      update products
+        set stock = stock - v_qty, sold_count = sold_count + v_qty, updated_at = now()
+        where id = v_product.id;
+      v_unit  := v_product.unit;
+      v_price := v_product.price;
+    else
+      if v_variant_id !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then
+        raise exception 'VARIANT_UNAVAILABLE:%', v_product.id;
+      end if;
+      select * into v_variant from product_variants
+        where id = v_variant_id::uuid and product_id = v_product.id
+        for update;
+      if not found then
+        raise exception 'VARIANT_UNAVAILABLE:%', v_product.id;
+      end if;
+      if v_variant.stock < v_qty then
+        raise exception 'OUT_OF_STOCK:%:%', v_variant.stock, v_product.name || ' (' || v_variant.label || ')';
+      end if;
+      -- The trigger on product_variants refreshes products.stock (the total).
+      update product_variants
+        set stock = stock - v_qty, updated_at = now()
+        where id = v_variant.id;
+      update products
+        set sold_count = sold_count + v_qty, updated_at = now()
+        where id = v_product.id;
+      v_unit  := v_variant.label;
+      v_price := v_variant.price;
+    end if;
+
+    v_lines := v_lines || (
+      jsonb_build_object(
+        'productId', v_product.id,
+        'name',      v_product.name,
+        'unit',      v_unit,
+        'price',     v_price,
+        'qty',       v_qty,
+        'image',     v_product.image
+      ) || case when v_variant_id is null then '{}'::jsonb
+                else jsonb_build_object('variantId', lower(v_variant_id)) end
+    );
+    v_subtotal := v_subtotal + v_price * v_qty;
+  end loop;
+
+  if v_code is not null then
+    select * into v_coupon from coupons where code = v_code for update;
+    if not found
+       or not v_coupon.active
+       or (v_coupon.starts_at  is not null and v_coupon.starts_at  > now())
+       or (v_coupon.expires_at is not null and v_coupon.expires_at < now())
+       or (v_coupon.usage_limit is not null and v_coupon.used_count >= v_coupon.usage_limit) then
+      raise exception 'COUPON_INVALID';
+    end if;
+    if v_subtotal < v_coupon.min_subtotal then
+      raise exception 'COUPON_MIN_SUBTOTAL:%', v_coupon.min_subtotal;
+    end if;
+
+    if v_coupon.discount_type = 'fixed' then
+      v_discount := least(v_coupon.value, v_subtotal);
+    else
+      v_discount := round(v_subtotal * v_coupon.value / 100);
+      if v_coupon.max_discount is not null then
+        v_discount := least(v_discount, v_coupon.max_discount);
+      end if;
+    end if;
+
+    update coupons set used_count = used_count + 1 where code = v_code;
+  end if;
+
+  -- Admin-set delivery charge (store_settings); no district counts as Dhaka.
+  v_fee := delivery_fee_for(v_subtotal, p_customer);
+  v_total := greatest(0, v_subtotal - v_discount + v_fee);
+
+  -- SSLCommerz accepts 10.00 – 500000.00 BDT per transaction.
+  if v_method = 'sslcommerz' and (v_total < 10 or v_total > 500000) then
+    raise exception 'PAYMENT_AMOUNT_OUT_OF_RANGE';
+  end if;
+
+  loop
+    v_id := 'FB-' || lpad((floor(random() * 1000000))::int::text, 6, '0');
+    exit when not exists (select 1 from orders where id = v_id);
+  end loop;
+
+  insert into orders (
+    id, user_id, customer_name, customer_phone, customer_email,
+    customer_address, customer_area, customer_city, delivery_slot, notes,
+    items, subtotal, discount, coupon_code, delivery_fee, total, status_history,
+    payment_method, payment_status, payment_tran_id,
+    customer_division, customer_district, customer_upazila, customer_union,
+    customer_landmark, customer_postcode
+  ) values (
+    v_id,
+    p_user_id,
+    p_customer->>'name',
+    p_customer->>'phone',
+    nullif(p_customer->>'email', ''),
+    p_customer->>'address',
+    p_customer->>'area',
+    coalesce(nullif(p_customer->>'city', ''), 'Dhaka'),
+    p_customer->>'deliverySlot',
+    nullif(p_customer->>'notes', ''),
+    v_lines,
+    v_subtotal,
+    v_discount,
+    case when v_discount > 0 then v_code end,
+    v_fee,
+    v_total,
+    jsonb_build_array(jsonb_build_object('status', 'Pending', 'at', now())),
+    v_method,
+    case when v_method = 'sslcommerz' then 'pending' else 'unpaid' end,
+    case when v_method = 'sslcommerz'
+      then replace(v_id, '-', '') || '-' || substr(replace(gen_random_uuid()::text, '-', ''), 1, 12)
+    end,
+    nullif(trim(p_customer->>'division'), ''),
+    nullif(trim(p_customer->>'district'), ''),
+    nullif(trim(p_customer->>'upazila'), ''),
+    nullif(trim(p_customer->>'union'), ''),
+    nullif(trim(p_customer->>'landmark'), ''),
+    nullif(trim(p_customer->>'postcode'), '')
+  )
+  returning * into v_order;
+
+  return to_jsonb(v_order);
+end;
+$$;
+
+-- set_order_status with sizes. Same as the definition above, except that a
+-- line with a variantId puts its stock back on (or takes it from) that size.
+-- A size that was deleted since the order has nothing to restore. A line
+-- without a variantId leaves the stock alone if the product has sizes now
+-- (its stock is then the total of the sizes).
+create or replace function set_order_status(p_id text, p_status text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_order orders%rowtype;
+  v_item  jsonb;
+  v_qty   int;
+  v_sign  int;
+begin
+  select * into v_order from orders where id = p_id for update;
+  if not found then
+    raise exception 'ORDER_NOT_FOUND';
+  end if;
+  if v_order.status = p_status then
+    return to_jsonb(v_order);
+  end if;
+
+  -- +1: cancelling gives the stock back; -1: re-opening takes it again.
+  v_sign := case when p_status = 'Cancelled' then 1
+                 when v_order.status = 'Cancelled' then -1
+                 else 0 end;
+
+  if v_sign <> 0 then
+    for v_item in select value from jsonb_array_elements(v_order.items) loop
+      v_qty := (v_item->>'qty')::int;
+      if nullif(v_item->>'variantId', '') is not null then
+        update product_variants
+          set stock = greatest(0, stock + v_sign * v_qty), updated_at = now()
+          where id = (v_item->>'variantId')::uuid;
+        update products
+          set sold_count = greatest(0, sold_count - v_sign * v_qty), updated_at = now()
+          where id = v_item->>'productId';
+      else
+        update products p
+          set stock = case when exists (select 1 from product_variants pv where pv.product_id = p.id)
+                        then p.stock
+                        else greatest(0, p.stock + v_sign * v_qty) end,
+              sold_count = greatest(0, p.sold_count - v_sign * v_qty),
+              updated_at = now()
+          where p.id = v_item->>'productId';
+      end if;
+    end loop;
+  end if;
+
+  update orders
+    set status = p_status,
+        status_history = status_history || jsonb_build_object('status', p_status, 'at', now()),
+        updated_at = now()
+    where id = p_id
+    returning * into v_order;
+
+  return to_jsonb(v_order);
+end;
+$$;
+
+revoke all on function sync_product_from_variants()                    from public, anon, authenticated;
+revoke all on function save_product_variants(text, jsonb)              from public, anon, authenticated;
+revoke all on function place_order(jsonb, jsonb, text, uuid, text)     from public, anon, authenticated;
+revoke all on function set_order_status(text, text)                    from public, anon, authenticated;
+grant execute on function save_product_variants(text, jsonb)           to service_role;
+grant execute on function place_order(jsonb, jsonb, text, uuid, text)  to service_role;
+grant execute on function set_order_status(text, text)                 to service_role;
+
+notify pgrst, 'reload schema';

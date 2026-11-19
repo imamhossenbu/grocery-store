@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { ArrowLeft, ArrowRight, RefreshCw, ShieldCheck, ShoppingBasket, Trash2 } from 'lucide-react';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { QuantityStepper } from '@/components/ui/Field';
+import { lineKey } from '@/lib/variants';
 import { useShop } from '@/context/ShopContext';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { CartSkeleton } from '@/components/store-ui/Skeletons';
@@ -83,7 +84,7 @@ export function CartView({ coupons }: { coupons: Coupon[] }) {
               const saving = item.oldPrice && item.oldPrice > item.price ? (item.oldPrice - item.price) * item.qty : 0;
               return (
                 <motion.li
-                  key={item.id}
+                  key={lineKey(item)}
                   layout
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
@@ -111,7 +112,7 @@ export function CartView({ coupons }: { coupons: Coupon[] }) {
                       <button
                         type="button"
                         onClick={() => {
-                          removeFromCart(item.id);
+                          removeFromCart(item.id, item.variantId);
                           toast('Removed from basket', item.name, 'info');
                         }}
                         aria-label={`Remove ${item.name} from basket`}
@@ -129,7 +130,7 @@ export function CartView({ coupons }: { coupons: Coupon[] }) {
                           value={item.qty}
                           min={1}
                           max={Math.max(1, Math.min(item.stock, 99))}
-                          onValueChange={(n) => setQty(item.id, n)}
+                          onValueChange={(n) => setQty(item.id, n, item.variantId)}
                         />
                         {atMax && item.stock < 99 ? (
                           <p className="mt-1 text-[13px] font-semibold text-amber-700">Max available: {item.stock}</p>

@@ -1,8 +1,10 @@
 'use client';
 
+import Link from 'next/link';
 import { Minus, Plus, ShoppingBasket } from 'lucide-react';
 import type { Product, ProductSnapshot } from '@/types/store';
 import { useShop } from '@/context/ShopContext';
+import { hasVariants } from '@/lib/variants';
 
 interface Props {
   product: Product | ProductSnapshot;
@@ -10,12 +12,27 @@ interface Props {
   className?: string;
 }
 
-/** "Add to basket" that turns into a −/+ stepper once the item is in the cart. */
+/**
+ * "Add to basket" that turns into a −/+ stepper once the item is in the cart.
+ * A product sold in sizes links to its page instead, where the size is chosen.
+ */
 export function AddToCartButton({ product, size = 'sm', className = '' }: Props) {
   const { getQty, addToCart, setQty, hydrated } = useShop();
   const qty = hydrated ? getQty(product.id) : 0;
   const out = product.stock <= 0;
   const h = size === 'lg' ? 'h-12 text-sm' : 'h-10 text-xs sm:text-sm';
+
+  if (hasVariants(product) && !('variantId' in product && product.variantId) && !out) {
+    return (
+      <Link
+        href={`/product/${product.id}`}
+        className={`inline-flex w-full items-center justify-center gap-2 rounded-full bg-emerald-gradient font-semibold text-white shadow-glow transition hover:brightness-105 active:scale-[0.98] ${h} ${className}`}
+      >
+        <ShoppingBasket className="w-4 h-4" />
+        {qty > 0 ? `${qty} in basket · add more` : 'Choose a size'}
+      </Link>
+    );
+  }
 
   if (qty > 0) {
     return (

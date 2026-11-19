@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useShop } from '@/context/ShopContext';
 import { refreshCart } from '@/actions/orders';
 import { formatBDT } from '@/lib/format';
+import { lineKey } from '@/lib/variants';
 
 export interface CartNotice {
   id: string;
@@ -38,26 +39,29 @@ export function useCartSync() {
 
     // No cancellation: the ref guard means this runs once per mount (also under
     // StrictMode's double effect), and a late setState after unmount is harmless.
-    refreshCart(snapshot.map((i) => i.id))
+    refreshCart(snapshot.map((i) => ({ id: i.id, ...(i.variantId ? { variantId: i.variantId } : {}) })))
       .then((res) => {
         if (!res.ok) return;
-        const byId = new Map(res.products.map((p) => [p.id, p]));
+        const byKey = new Map(res.products.map((p) => [lineKey(p), p]));
         const found: CartNotice[] = [];
         for (const item of snapshot) {
-          const f = byId.get(item.id);
+          const key = lineKey(item);
+          const f = byKey.get(key);
+          // A size line names its size, so two sizes of one product read apart.
+          const label = (s: { name: string; unit: string; variantId?: string }) => (s.variantId ? `${s.name} (${s.unit})` : s.name);
           if (!f) {
-            found.push({ id: item.id, kind: 'removed', text: `${item.name} is no longer sold and was removed from your basket.` });
+            found.push({ id: key, kind: 'removed', text: `${label(item)} is no longer sold this way and was removed from your basket.` });
           } else if (f.stock <= 0) {
-            found.push({ id: item.id, kind: 'soldout', text: `${f.name} is out of stock and was removed from your basket.` });
+            found.push({ id: key, kind: 'soldout', text: `${label(f)} is out of stock and was removed from your basket.` });
           } else {
             if (f.stock < item.qty) {
-              found.push({ id: item.id, kind: 'reduced', text: `Only ${f.stock} of ${f.name} left — we reduced your quantity from ${item.qty} to ${f.stock}.` });
+              found.push({ id: key, kind: 'reduced', text: `Only ${f.stock} of ${label(f)} left — we reduced your quantity from ${item.qty} to ${f.stock}.` });
             }
             if (f.price !== item.price) {
               found.push({
-                id: item.id,
+                id: key,
                 kind: f.price > item.price ? 'price-up' : 'price-down',
-                text: `${f.name} is now ${formatBDT(f.price)} (was ${formatBDT(item.price)}).`,
+                text: `${label(f)} is now ${formatBDT(f.price)} (was ${formatBDT(item.price)}).`,
               });
             }
           }

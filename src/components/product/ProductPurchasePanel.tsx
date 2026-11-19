@@ -4,23 +4,30 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Heart, Share2, ShoppingBasket, Zap } from 'lucide-react';
 import { QuantityStepper } from '@/components/ui/Field';
-import type { Product } from '@/types/store';
+import type { Product, ProductVariant } from '@/types/store';
 import { useShop } from '@/context/ShopContext';
 
-/** Quantity stepper, add to basket, buy now, wishlist and share for the product page. */
-export function ProductPurchasePanel({ product }: { product: Product }) {
+/**
+ * Quantity stepper, add to basket, buy now, wishlist and share for the product
+ * page. `variant` is the chosen size of a product sold in sizes: stock and the
+ * basket line are then that size's. Give it `key={variant?.id}` so the
+ * quantity starts at 1 again when the size changes.
+ */
+export function ProductPurchasePanel({ product, variant }: { product: Product; variant?: ProductVariant }) {
   const router = useRouter();
   const { addToCart, getQty, hydrated, isWishlisted, toggleWishlist, toast } = useShop();
   const [qty, setQty] = useState(1);
-  const out = product.stock <= 0;
-  const inCart = hydrated ? getQty(product.id) : 0;
-  const maxQty = Math.max(0, Math.min(product.stock, 99) - inCart);
+  const stock = variant ? variant.stock : product.stock;
+  const unit = variant ? variant.label : product.unit;
+  const out = stock <= 0;
+  const inCart = hydrated ? getQty(product.id, variant?.id) : 0;
+  const maxQty = Math.max(0, Math.min(stock, 99) - inCart);
   const wished = hydrated && isWishlisted(product.id);
   const q = Math.max(1, Math.min(qty, Math.max(maxQty, 1)));
 
   const share = async () => {
     const url = window.location.href;
-    const data = { title: product.name, text: `${product.name} (${product.unit}) on FreshBasket`, url };
+    const data = { title: product.name, text: `${product.name} (${unit}) on FreshBasket`, url };
     if (navigator.share) {
       try {
         await navigator.share(data);
@@ -60,7 +67,7 @@ export function ProductPurchasePanel({ product }: { product: Product }) {
           type="button"
           disabled={out || maxQty <= 0}
           onClick={() => {
-            addToCart(product, q);
+            addToCart(product, q, { variant });
             setQty(1);
           }}
           className={`fb-press inline-flex h-12 items-center justify-center gap-2 rounded-full text-sm font-bold transition active:scale-[0.98] disabled:cursor-not-allowed cursor-pointer ${
@@ -74,7 +81,7 @@ export function ProductPurchasePanel({ product }: { product: Product }) {
           type="button"
           disabled={out}
           onClick={() => {
-            if (maxQty > 0) addToCart(product, q);
+            if (maxQty > 0) addToCart(product, q, { variant });
             router.push('/checkout');
           }}
           className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-[#f5b82e] text-sm font-bold text-[#3a2502] shadow-md transition hover:bg-[#e5a91f] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"

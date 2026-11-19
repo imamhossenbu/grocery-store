@@ -1,7 +1,8 @@
 'use client';
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import type { CartItem, Coupon, Product, ProductSnapshot } from '@/types/store';
+import type { CartItem, Coupon, Product, ProductSnapshot, ProductVariant } from '@/types/store';
+import { lineKey, toSnapshot } from '@/lib/variants';
 import { DEFAULT_DELIVERY, deliveryFeeFor, discountFor, type DeliverySettings } from '@/lib/pricing';
 
 /**
@@ -29,12 +30,19 @@ interface ShopContextValue {
   total: number;
   coupon: Coupon | null;
   setCoupon: (c: Coupon | null) => void;
-  addToCart: (p: Product | ProductSnapshot, qty?: number, opts?: { silent?: boolean }) => void;
-  setQty: (productId: string, qty: number) => void;
-  removeFromCart: (productId: string) => void;
+  /**
+   * `variant`: the chosen size of a product sold in sizes. Such a product
+   * cannot be added without one (a basket line that already carries its
+   * variantId counts). Returns whether anything was added.
+   */
+  addToCart: (p: Product | ProductSnapshot, qty?: number, opts?: { silent?: boolean; variant?: ProductVariant }) => boolean;
+  /** `variantId` picks the line of one size; leave it out for a plain product. */
+  setQty: (productId: string, qty: number, variantId?: string) => void;
+  removeFromCart: (productId: string, variantId?: string) => void;
   clearCart: () => void;
-  getQty: (productId: string) => number;
-  /** Replace cart snapshots with fresh price/stock from the server. */
+  /** Quantity of one size, or without `variantId` of the product over all its lines. */
+  getQty: (productId: string, variantId?: string) => number;
+  /** Replace cart snapshots with fresh price/stock from the server (one per basket line). */
   syncCart: (fresh: ProductSnapshot[]) => void;
   wishlist: ProductSnapshot[];
   isWishlisted: (productId: string) => boolean;
@@ -57,8 +65,13 @@ const KEYS = {
   coupon: 'fb_coupon_v1',
 };
 
-export function snapshot(p: Product | ProductSnapshot): ProductSnapshot {
-  return { id: p.id, name: p.name, unit: p.unit, price: p.price, oldPrice: p.oldPrice, image: p.image, stock: p.stock };
+export function snapshot(p: Product | ProductSnapshot, variant?: ProductVariant): ProductSnapshot {
+  if ('category' in p) return toSnapshot(p, variant);
+  return {
+    id: p.id, name: p.name, unit: p.unit, price: p.price, oldPrice: p.oldPrice, image: p.image, stock: p.stock,
+    ...(p.variantId ? { variantId: p.variantId } : {}),
+    ...(p.hasVariants ? { hasVariants: true } : {}),
+  };
 }
 
 function load<T>(key: string, fallback: T): T {
@@ -123,45 +136,60 @@ export function ShopProvider({ children, delivery = DEFAULT_DELIVERY }: { childr
   );
 
   const addToCart = useCallback(
-    (p: Product | ProductSnapshot, qty = 1, opts?: { silent?: boolean }) => {
-      if (p.stock <= 0) {
-        toast('Out of stock', `${p.name} is currently unavailable.`, 'error');
-        return;
+    (p: Product | ProductSnapshot, qty = 1, opts?: { silent?: boolean; variant?: ProductVariant }) => {
+      const snap = snapshot(p, opts?.variant);
+      if (snap.hasVariants && !snap.variantId) {
+        toast('Choose a size first', `${snap.name} comes in several sizes. Open it to pick one.`, 'info');
+        return false;
       }
+      if (snap.stock <= 0) {
+        toast('Out of stock', `${snap.name} (${snap.unit}) is currently unavailable.`, 'error');
+        return false;
+      }
+      const key = lineKey(snap);
       let capped = false;
       setCart((prev) => {
-        const existing = prev.find((i) => i.id === p.id);
+        const existing = prev.find((i) => lineKey(i) === key);
         const want = (existing?.qty ?? 0) + qty;
-        const next = Math.min(want, p.stock, 99);
+        const next = Math.min(want, snap.stock, 99);
         capped = next < want;
-        const item: CartItem = { ...snapshot(p), qty: next };
-        return existing ? prev.map((i) => (i.id === p.id ? item : i)) : [...prev, item];
+        const item: CartItem = { ...snap, qty: next };
+        return existing ? prev.map((i) => (lineKey(i) === key ? item : i)) : [...prev, item];
       });
-      if (capped) toast('Stock limit reached', `Only ${p.stock} of ${p.name} available.`, 'info');
-      else if (!opts?.silent) toast('Added to basket', `${p.name} · ${p.unit}`);
+      if (capped) toast('Stock limit reached', `Only ${snap.stock} of ${snap.name} available.`, 'info');
+      else if (!opts?.silent) toast('Added to basket', `${snap.name} · ${snap.unit}`);
+      return true;
     },
     [toast]
   );
 
-  const setQty = useCallback((productId: string, qty: number) => {
+  const setQty = useCallback((productId: string, qty: number, variantId?: string) => {
+    const key = lineKey({ id: productId, variantId });
     setCart((prev) =>
       qty <= 0
-        ? prev.filter((i) => i.id !== productId)
-        : prev.map((i) => (i.id === productId ? { ...i, qty: Math.min(qty, Math.max(i.stock, 0), 99) } : i))
+        ? prev.filter((i) => lineKey(i) !== key)
+        : prev.map((i) => (lineKey(i) === key ? { ...i, qty: Math.min(qty, Math.max(i.stock, 0), 99) } : i))
     );
   }, []);
 
-  const removeFromCart = useCallback((productId: string) => setCart((prev) => prev.filter((i) => i.id !== productId)), []);
+  const removeFromCart = useCallback((productId: string, variantId?: string) => {
+    const key = lineKey({ id: productId, variantId });
+    setCart((prev) => prev.filter((i) => lineKey(i) !== key));
+  }, []);
   const clearCart = useCallback(() => { setCart([]); setCouponState(null); }, []);
-  const getQty = useCallback((productId: string) => cart.find((i) => i.id === productId)?.qty ?? 0, [cart]);
+  const getQty = useCallback(
+    (productId: string, variantId?: string) =>
+      cart.reduce((n, i) => (i.id === productId && (!variantId || i.variantId === variantId) ? n + i.qty : n), 0),
+    [cart]
+  );
 
   const syncCart = useCallback((fresh: ProductSnapshot[]) => {
-    const byId = new Map(fresh.map((f) => [f.id, f]));
+    const byKey = new Map(fresh.map((f) => [lineKey(f), f]));
     setCart((prev) =>
       prev
-        .filter((i) => byId.has(i.id))
+        .filter((i) => byKey.has(lineKey(i)))
         .map((i) => {
-          const f = byId.get(i.id)!;
+          const f = byKey.get(lineKey(i))!;
           return { ...f, qty: Math.min(i.qty, Math.max(f.stock, 0)) };
         })
         .filter((i) => i.qty > 0)

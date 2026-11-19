@@ -4,10 +4,12 @@ import { useCallback, useState } from 'react';
 import { getCurrentProducts } from '@/actions/account';
 import { useShop } from '@/context/ShopContext';
 import type { OrderItem } from '@/types/store';
+import { snapshotForLine } from '@/lib/variants';
 
 /**
- * Adds an order's items back to the basket at today's prices. Items that are
- * no longer sold or out of stock are skipped and reported in a toast;
+ * Adds an order's items back to the basket at today's prices, in the size
+ * that was bought. Items that are no longer sold (or not in that size) or
+ * out of stock are skipped and reported in a toast;
  * quantities are capped at the stock left.
  */
 export function useReorder() {
@@ -23,7 +25,8 @@ export function useReorder() {
         const added: string[] = [];
         const missing: string[] = [];
         for (const item of items) {
-          const p = byId.get(item.productId);
+          const product = byId.get(item.productId);
+          const p = product ? snapshotForLine(product, item.variantId) : null;
           if (!p || p.stock <= 0) {
             missing.push(item.name);
             continue;
