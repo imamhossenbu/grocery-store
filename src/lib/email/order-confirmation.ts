@@ -15,7 +15,7 @@ import { isEmailConfigured, sendMail } from './mailer';
  * (payment_details is otherwise only written by the payment functions.)
  */
 
-const BRAND = {
+export const BRAND = {
   forest: '#0f2c1d',
   green: '#1a663b',
   mint: '#3ed481',
@@ -26,8 +26,8 @@ const BRAND = {
   bg: '#eef5f0',
   soft: '#f4f9f5',
 };
-const SANS = "'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
-const SERIF = "Georgia,'Times New Roman',serif";
+export const SANS = "'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
+export const SERIF = "Georgia,'Times New Roman',serif";
 const CLAIM_KEY = 'confirmation_email_sent_at';
 
 interface OrderItem {
@@ -38,7 +38,7 @@ interface OrderItem {
   image?: string;
 }
 
-interface OrderForEmail {
+export interface OrderForEmail {
   id: string;
   access_token: string;
   customer_name: string;
@@ -63,10 +63,10 @@ interface OrderForEmail {
   created_at: string;
 }
 
-const esc = (v: unknown) =>
+export const esc = (v: unknown) =>
   String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
-const num = (v: unknown) => (Number.isFinite(Number(v)) ? Number(v) : 0);
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+export const num = (v: unknown) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 const PLACED = new Intl.DateTimeFormat('en-GB', {
   day: 'numeric',
@@ -82,7 +82,7 @@ export function orderLink(o: Pick<OrderForEmail, 'id' | 'access_token'>): string
   return `${SITE_URL}/order/${encodeURIComponent(o.id)}?token=${encodeURIComponent(o.access_token)}`;
 }
 
-function addressLine(o: OrderForEmail): string {
+export function addressLine(o: OrderForEmail): string {
   return [o.customer_address, o.customer_union, o.customer_area, o.customer_city].filter(Boolean).join(', ');
 }
 

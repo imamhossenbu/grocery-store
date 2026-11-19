@@ -75,6 +75,14 @@ Never tested:
 - The rule lives in `place_order()` in `supabase/schema.sql` (source of truth, applied to the live DB and tested for both cases) and is mirrored for display in `src/lib/pricing.ts`. Change both together.
 - Checkout recalculates the fee when the district changes (seen in a browser: Bogura → ৳130). The address picker now lists every district even after one is chosen; that last fix was type-checked and linted but not re-tested in a browser.
 
+## Order status emails (added 19 Nov 2026)
+
+- When staff set an order to **Out for delivery**, **Delivered** or **Cancelled** in the admin panel, the admin calls the storefront's `POST /api/notify/order-status` (same `REVALIDATE_SECRET` and `STOREFRONT_URL` as the cache refresh) and the storefront emails the shopper. Confirmed and Packed are not announced; change `NOTIFIED_STATUSES` in `src/lib/email/order-status.ts` to add them (each needs its own wording in `copyFor`).
+- Each status is emailed once per order (claim stored in `payment_details.status_emails`), only if the order is in that status and got there in the last 15 minutes.
+- Needs the `SMTP_*` variables in the storefront's `.env.local`; without them nothing is sent.
+- Tested against a local mail catcher by calling the storefront endpoint directly (auth, wrong status, repeat, toggle back and forth, bulk, paid-and-cancelled wording). **Not tested:** the click in the admin panel that triggers it, and delivery through real Gmail SMTP.
+- Cancellations made by the payment functions (failed or expired online payment) send no email. SMS is not built.
+
 ## Not done yet
 
 Storefront
